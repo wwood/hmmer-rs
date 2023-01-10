@@ -1,12 +1,12 @@
+use log::*;
+
 use std::ffi::CString;
 use std::ffi::CStr;
 
 use libhmmer_sys;
 
 fn main() {
-    println!("Hello, world!");
-
-    let hmm = Hmm::read_one_from_path(std::path::Path::new("test/data/DNGNGWU00030_mingle_output_good_seqs.hmm"));
+    let hmm = Hmm::read_one_from_path(std::path::Path::new("test/data/DNGNGWU00030_mingle_output_good_seqs.hmm")).unwrap();
 
     println!("HMM name: {}", unsafe { CStr::from_ptr((*hmm.c_hmm).name).to_string_lossy() });
 }
@@ -16,7 +16,7 @@ struct Hmm {
 }
 
 impl Hmm {
-    pub fn read_one_from_path(path: &std::path::Path) -> Hmm {
+    pub fn read_one_from_path(path: &std::path::Path) -> Result<Hmm, &'static str> {
         // char          errbuf[eslERRBUFSIZE];
         // easel/easel.h:#define eslERRBUFSIZE 128
         #[allow(unused_mut)]
@@ -31,9 +31,10 @@ impl Hmm {
         };
         // eslOK = 0
         if status1 != 0 {
-            panic!("Error in initial reading of HMM file");
+            error!("Error in initial reading of HMM file");
+            return Err("Error in initial reading of HMM file");
         }
-        println!("HMM file opened successfully");
+        debug!("HMM file opened successfully");
 
         // ESL_ALPHABET *abc     = NULL;	/* alphabet (set from the HMM file)*/
         // Set to NULL to not force alphabet
@@ -46,9 +47,10 @@ impl Hmm {
             libhmmer_sys::p7_hmmfile_Read(hfp, &mut abc, &mut hmm)
         };
         if status2 != 0 {
-            panic!("Error in reading first HMM");
+            error!("Error in reading first HMM");
+            return Err("Error in reading first HMM");
         }
-        println!("First HMM read successfully");
+        debug!("First HMM read successfully");
 
         // retake pointer to free memory
         unsafe {
@@ -56,9 +58,9 @@ impl Hmm {
             let _ = CString::from_raw(hmmfile);
         }
 
-        return Hmm {
+        return Ok(Hmm {
             c_hmm: hmm,
-        }
+        })
     }
 }
 
