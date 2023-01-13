@@ -22,6 +22,15 @@ fn main() {
 
     // th->hit[h]->score,
     println!("First domain nreported: {}", unsafe {(*hmmsearch_result.c_th).nreported});
+    let first_hit = unsafe {*(*(*hmmsearch_result.c_th).hit.offset(0))};
+    println!("Name of first hit {}", unsafe { CStr::from_ptr(first_hit.name).to_string_lossy() });
+    println!("Score of first hit overall {}", first_hit.score);
+
+    let first_domain = unsafe {*first_hit.dcl.offset(0)};
+    println!("First domain score: {}", first_domain.bitscore);
+    // exp(th->hit[h]->lnP) * pli->Z;
+    let evalue = first_domain.lnP.exp() * unsafe {(*hmmsearch_result.c_pli).Z};
+    println!("First domain evalue: {:?}", evalue);
 }
 
 // Static defines of things not available from libhmmer-sys e.g. #defines
@@ -288,7 +297,8 @@ impl HmmerPipeline {
         // TODO: Destroy, free, etc.
 
         return HmmsearchResult {
-            c_th: info.th
+            c_th: info.th,
+            c_pli: info.pli,
         };
     }
     
@@ -335,7 +345,7 @@ impl HmmerPipeline {
         let mut sstatus: i32;
 
         //   ESL_SQ   *dbsq     = NULL;   /* one target sequence (digital)  */
-        #[allow(unused_mut)]
+        #[allow(unused_mut, unused_assignments)]
         let mut dbsq: *mut libhmmer_sys::ESL_SQ = std::ptr::null_mut();
         
         // int seq_cnt = 0;
@@ -414,13 +424,15 @@ struct HmmsearchWorkerInfo {
 
 #[derive(Debug)]
 struct HmmsearchResult {
-    c_th: *mut libhmmer_sys::p7_tophits_s
+    c_th: *mut libhmmer_sys::p7_tophits_s,
+    c_pli: *mut libhmmer_sys::p7_pipeline_s,
 }
 
 impl Drop for HmmsearchResult {
     fn drop(&mut self) {
         unsafe {
             libhmmer_sys::p7_tophits_Destroy(self.c_th);
+            libhmmer_sys::p7_pipeline_Destroy(self.c_pli);
         }
     }
 }
