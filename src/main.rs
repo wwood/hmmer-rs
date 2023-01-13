@@ -233,7 +233,7 @@ impl HmmerPipeline {
             pli: pli,
             bg: bg,
         };
-        let sstatus = self.serial_loop(&mut info, dbfile, -1);
+        let sstatus = self.serial_loop_over_esl_sqio(&mut info, dbfile, -1);
 
         // switch(sstatus)
         // {
@@ -336,9 +336,10 @@ impl HmmerPipeline {
         return dbfp;
     }
 
-    /// This method is not available in libhmmer_sys, so we have to implement it
-    /// here. Intended as a direct replacement for the C function.                     */
-    fn serial_loop(&self, info: &mut HmmsearchWorkerInfo, dbfp: *mut libhmmer_sys::esl_sqio_s, n_targetseqs: i32) -> i32 {
+    /// This method (called serial_loop in C) is not available in libhmmer_sys,
+    /// so we have to implement it here. Intended as a direct replacement for
+    /// the C function.
+    fn serial_loop_over_esl_sqio(&self, info: &mut HmmsearchWorkerInfo, dbfp: *mut libhmmer_sys::esl_sqio_s, n_targetseqs: i32) -> i32 {
         debug!("serial_loop");
 
         //   int              status;                       /* easel return code                               */
@@ -405,6 +406,21 @@ impl HmmerPipeline {
         }
 
         return sstatus;
+    }
+
+    pub fn query(easel_sequence: &EaselSequence, info: &mut HmmsearchWorkerInfo) {
+        unsafe {
+            // p7_pli_NewSeq(info->pli, dbsq);
+            libhmmer_sys::p7_pli_NewSeq(info.pli, easel_sequence.c_sq);
+
+            // p7_bg_SetLength(info->bg, dbsq->n);
+            libhmmer_sys::p7_bg_SetLength(info.bg, (*easel_sequence.c_sq).n.try_into().expect("i64 -> i32 failed"));
+            // p7_oprofile_ReconfigLength(info->om, dbsq->n);
+            libhmmer_sys::p7_oprofile_ReconfigLength(info.om, (*easel_sequence.c_sq).n.try_into().expect("i64 -> i32 failed"));
+
+            // p7_Pipeline(info->pli, info->om, info->bg, dbsq, NULL, info->th);
+            libhmmer_sys::p7_Pipeline(info.pli, info.om, info.bg, easel_sequence.c_sq, std::ptr::null_mut(), info.th);
+        }
     }
 }
 
