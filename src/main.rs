@@ -18,7 +18,10 @@ fn main() {
 
     let hmmsearch_result = hmmsearch.run_hmm_on_file(&hmm, std::path::Path::new("test/data/graftm4o5_y58f.head2.faa"));
 
-    println!("HMMsearch result: {:?}", hmmsearch_result);
+    debug!("HMMsearch result: {:?}", hmmsearch_result);
+
+    // th->hit[h]->score,
+    println!("First domain nreported: {}", unsafe {(*hmmsearch_result.c_th).nreported});
 }
 
 // Static defines of things not available from libhmmer-sys e.g. #defines
@@ -99,14 +102,28 @@ impl Hmm {
     }
 
     pub fn acc(&self) -> String {
-        return unsafe {
-            CStr::from_ptr((*self.c_hmm).acc).to_string_lossy().to_string()
+        let my_acc = unsafe {
+            (*self.c_hmm).acc
+        };
+        if my_acc.is_null() {
+            return "".to_string(); // Otherwise we get a segfault
+        } else {
+            return unsafe {
+                CStr::from_ptr(my_acc).to_string_lossy().to_string()
+            }
         }
     }
 
     pub fn desc(&self) -> String {
-        return unsafe {
-            CStr::from_ptr((*self.c_hmm).desc).to_string_lossy().to_string()
+        let my_desc = unsafe {
+            (*self.c_hmm).desc
+        };
+        if my_desc.is_null() {
+            return "".to_string(); // Otherwise we get a segfault
+        } else {
+            return unsafe {
+                CStr::from_ptr(my_desc).to_string_lossy().to_string()
+            }
         }
     }
 }
@@ -145,11 +162,7 @@ impl HmmerPipeline {
         // int              textw    = 0;
 
         // WORKER_INFO     *info     = NULL;
-        let mut info: *mut HmmsearchWorkerInfo = std::ptr::null_mut();
-        // info[i].bg    = p7_bg_Create(abc);
-        unsafe {
-            (*info).bg = libhmmer_sys::p7_bg_Create(hmm.c_alphabet());
-        }
+        let bg = unsafe {libhmmer_sys::p7_bg_Create(hmm.c_alphabet())};
         debug!("Background model created successfully");
 
         // if (fprintf(ofp, "Query:       %s  [M=%d]\n", hmm->name, hmm->M)  < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
@@ -169,14 +182,17 @@ impl HmmerPipeline {
         gm = unsafe {
             libhmmer_sys::p7_profile_Create(hmm.length() as i32, abc)
         };
+        debug!("Profile created successfully");
         om = unsafe {
             libhmmer_sys::p7_oprofile_Create(hmm.length() as i32, abc)
         };
+        debug!("Optimized profile created successfully");
 
         unsafe {
-            // TODO: the null model here is wrong.
-            libhmmer_sys::p7_ProfileConfig(hmm.c_hmm, (*info).bg, gm, 100, p7_LOCAL);
+            libhmmer_sys::p7_ProfileConfig(hmm.c_hmm, bg, gm, 100, p7_LOCAL);
+            debug!("Profile configured successfully");
             libhmmer_sys::p7_oprofile_Convert(gm, om);
+            debug!("Optimized profile converted successfully");
         }
 
         // /* Create processing pipeline and hit list */
@@ -185,19 +201,30 @@ impl HmmerPipeline {
         // info[i].pli = p7_pipeline_Create(go, om->M, 100, FALSE, p7_SEARCH_SEQS); /* L_hint = 100 is just a dummy for now */
         // status = p7_pli_NewModel(info[i].pli, info[i].om, info[i].bg);
         // if (status == eslEINVAL) p7_Fail(info->pli->errbuf);
+        let th = unsafe {libhmmer_sys::p7_tophits_Create()};
+        debug!("Tophits created successfully");
+        // let om = libhmmer_sys::p7_oprofile_Clone(om);
+        let pli = unsafe {
+            libhmmer_sys::p7_pipeline_Create(std::ptr::null_mut(), (*om).M, 100, 0, libhmmer_sys_extras::p7_SEARCH_SEQS as u32)
+        };
+        debug!("Pipeline created successfully");
         unsafe {
-            (*info).th = libhmmer_sys::p7_tophits_Create();
-            (*info).om = libhmmer_sys::p7_oprofile_Clone(om);
-            (*info).pli = libhmmer_sys::p7_pipeline_Create(std::ptr::null_mut(), (*om).M, 100, 0, libhmmer_sys_extras::p7_SEARCH_SEQS as u32);
-            let status = libhmmer_sys::p7_pli_NewModel((*info).pli, (*info).om, (*info).bg);
+            let status = libhmmer_sys::p7_pli_NewModel(pli, om, bg);
             if status == libhmmer_sys_extras::eslEINVAL {
                 panic!(); // TODO: Better msg
             }
         }
+        debug!("Pipeline new model created successfully");
 
         // sstatus = serial_loop(info, dbfp, cfg->n_targetseq);
         // TODO: n_targetseq == -1 means no limit. OK for now.
-        let sstatus = self.serial_loop(info, dbfile, -1);
+        let mut info  = HmmsearchWorkerInfo {
+            th: th,
+            om: om,
+            pli: pli,
+            bg: bg,
+        };
+        let sstatus = self.serial_loop(&mut info, dbfile, -1);
 
         // switch(sstatus)
         // {
@@ -244,8 +271,8 @@ impl HmmerPipeline {
         // p7_tophits_Targets(ofp, info->th, info->pli, textw); if (fprintf(ofp, "\n\n") < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
         // p7_tophits_Domains(ofp, info->th, info->pli, textw); if (fprintf(ofp, "\n\n") < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
         unsafe {
-            libhmmer_sys::p7_tophits_SortBySortkey((*info).th);
-            libhmmer_sys::p7_tophits_Threshold((*info).th, (*info).pli);
+            libhmmer_sys::p7_tophits_SortBySortkey(info.th);
+            libhmmer_sys::p7_tophits_Threshold(info.th, info.pli);
             
             // TODO: Implement (optional) output of default output.
             // panic!("Need to get FILE* from fopen or stdout to do this");
@@ -260,10 +287,8 @@ impl HmmerPipeline {
 
         // TODO: Destroy, free, etc.
 
-        return unsafe {
-            HmmsearchResult {
-                c_th: (*info).th
-            }
+        return HmmsearchResult {
+            c_th: info.th
         };
     }
     
@@ -271,10 +296,6 @@ impl HmmerPipeline {
     fn open_target_sequences(fasta_file: &str) -> *mut libhmmer_sys::esl_sqio_s {
         //   int              dbfmt    = eslSQFILE_UNKNOWN; /* format code for sequence database file          */
         let dbfmt = 0; //libhmmer_sys::eslSQFILE_UNKNOWN;
-
-        // #define p7_SEQDBENV          "BLASTDB"
-        #[allow(non_snake_case)]
-        let p7_SEQDBENV = "BLASTDB";
 
         //   ESL_SQFILE      *dbfp     = NULL;              /* open input sequence file                        */
         let mut dbfp: *mut libhmmer_sys::ESL_SQFILE = std::ptr::null_mut();
@@ -287,7 +308,8 @@ impl HmmerPipeline {
         //   else if (status != eslOK)        p7_Fail("Unexpected error %d opening sequence file %s\n", status, cfg->dbfile); 
         let file_pointer = CString::new(fasta_file.as_bytes()).unwrap().into_raw();
         let status = unsafe {
-            // libhmmer_sys::esl_sqfile_Open(fasta_file.as_ptr() as *const i8, dbfmt, p7_SEQDBENV.as_ptr() as *const i8, &mut dbfp)
+            // Open the file not assuming anything about its format, and let
+            // autodetect do its thing. Possibly we should use eslSQFILE_FASTA.
             libhmmer_sys::esl_sqfile_Open(file_pointer, dbfmt, std::ptr::null(), &mut dbfp)
         }; 
         println!("Opened fasta file with status {}", status);
@@ -306,43 +328,49 @@ impl HmmerPipeline {
 
     /// This method is not available in libhmmer_sys, so we have to implement it
     /// here. Intended as a direct replacement for the C function.                     */
-    #[allow(unused_variables)]
-    fn serial_loop(&self, info: *mut HmmsearchWorkerInfo, dbfile: *mut libhmmer_sys::esl_sqio_s, n_targetseqs: i32) -> i32 {
+    fn serial_loop(&self, info: &mut HmmsearchWorkerInfo, dbfp: *mut libhmmer_sys::esl_sqio_s, n_targetseqs: i32) -> i32 {
+        debug!("serial_loop");
+
         //   int              status;                       /* easel return code                               */
         let mut sstatus: i32;
 
-        //   ESL_SQFILE      *dbfp     = NULL;              /* open input sequence file                        */
+        //   ESL_SQ   *dbsq     = NULL;   /* one target sequence (digital)  */
         #[allow(unused_mut)]
-        let mut dbfp: *mut libhmmer_sys::ESL_SQFILE = std::ptr::null_mut();
+        let mut dbsq: *mut libhmmer_sys::ESL_SQ = std::ptr::null_mut();
         
         // int seq_cnt = 0;
         let mut seq_cnt: i32 = 0;
 
         // dbsq = esl_sq_CreateDigital(info->om->abc);
-        #[allow(unused_mut)]
-        let mut dbsq = unsafe {
-            libhmmer_sys::esl_sq_CreateDigital((*info).om.as_ref().unwrap().abc)
+        dbsq = unsafe {
+            let abc_here = (*info.om).abc;
+            debug!("Creating digital sequence from abc {:?}", abc_here);
+            debug!("K in abc is {}", (*abc_here).K);
+            libhmmer_sys::esl_sq_CreateDigital(abc_here)
         };
+        debug!("dbsq created as digital, from abc {:?}", unsafe { (*dbsq).abc });
 
         //   /* Main loop: */
         //   while ( (n_targetseqs==-1 || seq_cnt<n_targetseqs) &&  (sstatus = esl_sqio_Read(dbfp, dbsq)) == eslOK)
         //   {
         sstatus = unsafe { libhmmer_sys::esl_sqio_Read(dbfp, dbsq) };
+        debug!("esl_sqio_Read returned {}", sstatus);
         while (n_targetseqs == -1 || seq_cnt < n_targetseqs) && sstatus == libhmmer_sys_extras::eslOK {
             unsafe {
                 // p7_pli_NewSeq(info->pli, dbsq);
-                libhmmer_sys::p7_pli_NewSeq((*info).pli, dbsq);
+                libhmmer_sys::p7_pli_NewSeq(info.pli, dbsq);
 
                 // p7_bg_SetLength(info->bg, dbsq->n);
-                libhmmer_sys::p7_bg_SetLength((*info).bg, (*dbsq).n.try_into().expect("i64 -> i32 failed"));
+                libhmmer_sys::p7_bg_SetLength(info.bg, (*dbsq).n.try_into().expect("i64 -> i32 failed"));
                 // p7_oprofile_ReconfigLength(info->om, dbsq->n);
-                libhmmer_sys::p7_oprofile_ReconfigLength((*info).om, (*dbsq).n.try_into().expect("i64 -> i32 failed"));
+                libhmmer_sys::p7_oprofile_ReconfigLength(info.om, (*dbsq).n.try_into().expect("i64 -> i32 failed"));
 
                 // p7_Pipeline(info->pli, info->om, info->bg, dbsq, NULL, info->th);
-                libhmmer_sys::p7_Pipeline((*info).pli, (*info).om, (*info).bg, dbsq, std::ptr::null_mut(), (*info).th);
+                libhmmer_sys::p7_Pipeline(info.pli, info.om, info.bg, dbsq, std::ptr::null_mut(), info.th);
 
                 // In the C code, this is part of the while loop condition.
                 sstatus = libhmmer_sys::esl_sqio_Read(dbfp, dbsq);
+                debug!("esl_sqio_Read returned {}", sstatus);
             }
             
             // seq_cnt++;
@@ -351,7 +379,7 @@ impl HmmerPipeline {
             // p7_pipeline_Reuse(info->pli);
             unsafe {
                 libhmmer_sys::esl_sq_Reuse(dbsq);
-                libhmmer_sys::p7_pipeline_Reuse((*info).pli);
+                libhmmer_sys::p7_pipeline_Reuse(info.pli);
             }
         }
 
