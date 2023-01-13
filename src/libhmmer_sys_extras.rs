@@ -72,3 +72,12 @@ pub const eslEINACCURATE: i32 = 28;
 //  enum p7_complementarity_e { p7_NOCOMPLEMENT    = 0, p7_COMPLEMENT   = 1 };
 pub const p7_SEARCH_SEQS: i32 = 0;
 // TODO: Add more, but eh for now.
+
+
+
+
+// #define p7_LOCAL     1		/* multihit local:  "fs" mode   */
+pub const p7_LOCAL: i32 = 1;
+
+// easel/easel.h:#define eslERRBUFSIZE 128
+pub const eslERRBUFSIZE: i32 = 128;
