@@ -1,4 +1,5 @@
 use log::*;
+use env_logger;
 
 use std::ffi::CString;
 use std::ffi::CStr;
@@ -7,6 +8,8 @@ use libhmmer_sys;
 use hmmer_rs::libhmmer_sys_extras;
 
 fn main() {
+    env_logger::init();
+    
     let hmm = Hmm::read_one_from_path(std::path::Path::new("test/data/DNGNGWU00010_mingle_output_good_seqs.hmm")).unwrap();
 
     println!("HMM name: {}", unsafe { CStr::from_ptr((*hmm.c_hmm).name).to_string_lossy() });
@@ -120,8 +123,10 @@ struct HmmerPipeline {}
 
 impl HmmerPipeline {
     pub fn run_hmm_on_file(&self, hmm: &Hmm, fasta_path: &std::path::Path) -> HmmsearchResult {
+        debug!("Starting run_hmm_on_file");
         #[allow(unused_mut)]
         let mut dbfile = Self::open_target_sequences(&fasta_path.to_string_lossy());
+        debug!("Target sequences opened successfully");
 
         // TODO: output_header(ofp, go, cfg->hmmfile, cfg->dbfile);
 
@@ -129,6 +134,7 @@ impl HmmerPipeline {
         unsafe {
             libhmmer_sys::esl_sqfile_SetDigital(dbfile, hmm.c_alphabet());
         }
+        debug!("Target sequences set to digital successfully");
 
         // P7_PROFILE      *gm      = NULL;
         // P7_OPROFILE     *om      = NULL;       /* optimized query profile                  */
@@ -144,6 +150,7 @@ impl HmmerPipeline {
         unsafe {
             (*info).bg = libhmmer_sys::p7_bg_Create(hmm.c_alphabet());
         }
+        debug!("Background model created successfully");
 
         // if (fprintf(ofp, "Query:       %s  [M=%d]\n", hmm->name, hmm->M)  < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
         // if (hmm->acc)  { if (fprintf(ofp, "Accession:   %s\n", hmm->acc)  < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed"); }
