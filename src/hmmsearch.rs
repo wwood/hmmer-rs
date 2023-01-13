@@ -3,23 +3,12 @@ use log::*;
 
 use crate::{hmm::*, libhmmer_sys_extras::*, EaselSequence};
 
-pub struct HmmerPipeline {}
+pub struct HmmerPipeline {
+    info: HmmsearchWorkerInfo,
+}
 
 impl HmmerPipeline {
-    pub fn run_hmm_on_file(&self, hmm: &Hmm, fasta_path: &std::path::Path) -> HmmsearchResult {
-        debug!("Starting run_hmm_on_file");
-        #[allow(unused_mut)]
-        let mut dbfile = Self::open_target_sequences(&fasta_path.to_string_lossy());
-        debug!("Target sequences opened successfully");
-
-        // TODO: output_header(ofp, go, cfg->hmmfile, cfg->dbfile);
-
-        //       esl_sqfile_SetDigital(dbfp, abc); //ReadBlock requires knowledge of the alphabet to decide how best to read blocks
-        unsafe {
-            libhmmer_sys::esl_sqfile_SetDigital(dbfile, hmm.c_alphabet());
-        }
-        debug!("Target sequences set to digital successfully");
-
+    pub fn new(hmm: &Hmm) -> HmmerPipeline {
         // P7_PROFILE      *gm      = NULL;
         // P7_OPROFILE     *om      = NULL;       /* optimized query profile                  */
         #[allow(unused_assignments)]
@@ -32,14 +21,6 @@ impl HmmerPipeline {
         let bg = unsafe {libhmmer_sys::p7_bg_Create(hmm.c_alphabet())};
         debug!("Background model created successfully");
 
-        // if (fprintf(ofp, "Query:       %s  [M=%d]\n", hmm->name, hmm->M)  < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
-        // if (hmm->acc)  { if (fprintf(ofp, "Accession:   %s\n", hmm->acc)  < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed"); }
-        // if (hmm->desc) { if (fprintf(ofp, "Description: %s\n", hmm->desc) < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed"); }
-        println!("Query:       {}  [M={}]", hmm.name(), hmm.length());
-        println!("Accession:   {}", hmm.acc());
-        println!("Description: {}", hmm.desc());
- 
-        
         //   /* Convert to an optimized model */
         // gm = p7_profile_Create (hmm->M, abc);
         // om = p7_oprofile_Create(hmm->M, abc);
@@ -54,14 +35,14 @@ impl HmmerPipeline {
             libhmmer_sys::p7_oprofile_Create(hmm.length() as i32, abc)
         };
         debug!("Optimized profile created successfully");
-
+        
         unsafe {
             libhmmer_sys::p7_ProfileConfig(hmm.c_hmm, bg, gm, 100, p7_LOCAL);
             debug!("Profile configured successfully");
             libhmmer_sys::p7_oprofile_Convert(gm, om);
             debug!("Optimized profile converted successfully");
         }
-
+        
         // /* Create processing pipeline and hit list */
         // info[i].th  = p7_tophits_Create();
         // info[i].om  = p7_oprofile_Clone(om);
@@ -83,15 +64,42 @@ impl HmmerPipeline {
         }
         debug!("Pipeline new model created successfully");
 
-        // sstatus = serial_loop(info, dbfp, cfg->n_targetseq);
-        // TODO: n_targetseq == -1 means no limit. OK for now.
-        let mut info  = HmmsearchWorkerInfo {
+        let info  = HmmsearchWorkerInfo {
             th: th,
             om: om,
             pli: pli,
             bg: bg,
         };
-        let sstatus = self.serial_loop_over_esl_sqio(&mut info, dbfile, -1);
+
+        HmmerPipeline {
+            info: info,
+        }
+    }
+
+    pub fn run_hmm_on_file(&mut self, hmm: &Hmm, fasta_path: &std::path::Path) -> HmmsearchResult {
+        debug!("Starting run_hmm_on_file");
+        #[allow(unused_mut)]
+        let mut dbfile = Self::open_target_sequences(&fasta_path.to_string_lossy());
+        debug!("Target sequences opened successfully");
+
+        // TODO: output_header(ofp, go, cfg->hmmfile, cfg->dbfile);
+
+        //       esl_sqfile_SetDigital(dbfp, abc); //ReadBlock requires knowledge of the alphabet to decide how best to read blocks
+        unsafe {
+            libhmmer_sys::esl_sqfile_SetDigital(dbfile, hmm.c_alphabet());
+        }
+        debug!("Target sequences set to digital successfully");
+
+        // if (fprintf(ofp, "Query:       %s  [M=%d]\n", hmm->name, hmm->M)  < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
+        // if (hmm->acc)  { if (fprintf(ofp, "Accession:   %s\n", hmm->acc)  < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed"); }
+        // if (hmm->desc) { if (fprintf(ofp, "Description: %s\n", hmm->desc) < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed"); }
+        println!("Query:       {}  [M={}]", hmm.name(), hmm.length());
+        println!("Accession:   {}", hmm.acc());
+        println!("Description: {}", hmm.desc());
+
+        // sstatus = serial_loop(info, dbfp, cfg->n_targetseq);
+        // TODO: n_targetseq == -1 means no limit. OK for now.
+        let sstatus = self.serial_loop_over_esl_sqio(dbfile, -1);
 
         // switch(sstatus)
         // {
@@ -139,8 +147,8 @@ impl HmmerPipeline {
         // p7_tophits_Targets(ofp, info->th, info->pli, textw); if (fprintf(ofp, "\n\n") < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
         // p7_tophits_Domains(ofp, info->th, info->pli, textw); if (fprintf(ofp, "\n\n") < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
         unsafe {
-            libhmmer_sys::p7_tophits_SortBySortkey(info.th);
-            libhmmer_sys::p7_tophits_Threshold(info.th, info.pli);
+            libhmmer_sys::p7_tophits_SortBySortkey(self.info.th);
+            libhmmer_sys::p7_tophits_Threshold(self.info.th, self.info.pli);
             
             // TODO: Implement (optional) output of default output.
             // panic!("Need to get FILE* from fopen or stdout to do this");
@@ -156,8 +164,8 @@ impl HmmerPipeline {
         // TODO: Destroy, free, etc.
 
         return HmmsearchResult {
-            c_th: info.th,
-            c_pli: info.pli,
+            c_th: self.info.th,
+            c_pli: self.info.pli,
         };
     }
     
@@ -198,7 +206,7 @@ impl HmmerPipeline {
     /// This method (called serial_loop in C) is not available in libhmmer_sys,
     /// so we have to implement it here. Intended as a direct replacement for
     /// the C function.
-    fn serial_loop_over_esl_sqio(&self, info: &mut HmmsearchWorkerInfo, dbfp: *mut libhmmer_sys::esl_sqio_s, n_targetseqs: i32) -> i32 {
+    fn serial_loop_over_esl_sqio(&mut self, dbfp: *mut libhmmer_sys::esl_sqio_s, n_targetseqs: i32) -> i32 {
         debug!("serial_loop");
 
         //   int              status;                       /* easel return code                               */
@@ -210,6 +218,9 @@ impl HmmerPipeline {
         
         // int seq_cnt = 0;
         let mut seq_cnt: i32 = 0;
+
+        // For convenience
+        let info = &mut self.info;
 
         // dbsq = esl_sq_CreateDigital(info->om->abc);
         dbsq = unsafe {
@@ -267,7 +278,9 @@ impl HmmerPipeline {
         return sstatus;
     }
 
-    pub fn query(easel_sequence: &EaselSequence, info: &mut HmmsearchWorkerInfo) {
+    pub fn query(&mut self, easel_sequence: &EaselSequence) {
+        let info = &mut self.info;
+
         unsafe {
             // p7_pli_NewSeq(info->pli, dbsq);
             libhmmer_sys::p7_pli_NewSeq(info.pli, easel_sequence.c_sq);
@@ -279,6 +292,13 @@ impl HmmerPipeline {
 
             // p7_Pipeline(info->pli, info->om, info->bg, dbsq, NULL, info->th);
             libhmmer_sys::p7_Pipeline(info.pli, info.om, info.bg, easel_sequence.c_sq, std::ptr::null_mut(), info.th);
+        }
+    }
+
+    pub fn get_results(&mut self) -> HmmsearchResult {
+        HmmsearchResult {
+            c_th: self.info.th,
+            c_pli: self.info.pli,
         }
     }
 }

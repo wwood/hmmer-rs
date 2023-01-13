@@ -12,7 +12,7 @@ mod tests {
 
         println!("HMM name: {}", unsafe { CStr::from_ptr((*hmm.c_hmm).name).to_string_lossy() });
     
-        let hmmsearch = HmmerPipeline{};
+        let mut hmmsearch = HmmerPipeline::new(&hmm);
     
         let hmmsearch_result = hmmsearch.run_hmm_on_file(&hmm, std::path::Path::new("tests/data/graftm4o5_y58f.head2.faa"));
     
