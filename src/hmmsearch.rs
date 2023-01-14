@@ -236,6 +236,11 @@ impl HmmerPipeline {
         //   {
         sstatus = unsafe { libhmmer_sys::esl_sqio_Read(dbfp, dbsq) };
         debug!("esl_sqio_Read returned {}", sstatus);
+        debug!("dbsq is {:?}", dbsq);
+        debug!("dbsq internals: {:?}", EaselSequence {
+            c_sq: dbsq
+        });
+
         while (n_targetseqs == -1 || seq_cnt < n_targetseqs) && sstatus == eslOK {
             unsafe {
                 // p7_pli_NewSeq(info->pli, dbsq);
@@ -247,7 +252,10 @@ impl HmmerPipeline {
                 libhmmer_sys::p7_oprofile_ReconfigLength(info.om, (*dbsq).n.try_into().expect("i64 -> i32 failed"));
 
                 // p7_Pipeline(info->pli, info->om, info->bg, dbsq, NULL, info->th);
-                libhmmer_sys::p7_Pipeline(info.pli, info.om, info.bg, dbsq, std::ptr::null_mut(), info.th);
+                let p7_sstatus = libhmmer_sys::p7_Pipeline(info.pli, info.om, info.bg, dbsq, std::ptr::null_mut(), info.th);
+                if p7_sstatus != eslOK {
+                    panic!("p7_Pipeline sstatus indicated failure, was {}", p7_sstatus);
+                }
 
                 // In the C code, this is part of the while loop condition.
                 sstatus = libhmmer_sys::esl_sqio_Read(dbfp, dbsq);
@@ -283,15 +291,25 @@ impl HmmerPipeline {
 
         unsafe {
             // p7_pli_NewSeq(info->pli, dbsq);
-            libhmmer_sys::p7_pli_NewSeq(info.pli, easel_sequence.c_sq);
+            if libhmmer_sys::p7_pli_NewSeq(info.pli, easel_sequence.c_sq) != eslOK {
+                panic!()
+            };
 
             // p7_bg_SetLength(info->bg, dbsq->n);
-            libhmmer_sys::p7_bg_SetLength(info.bg, (*easel_sequence.c_sq).n.try_into().expect("i64 -> i32 failed"));
+            if libhmmer_sys::p7_bg_SetLength(info.bg, (*easel_sequence.c_sq).n.try_into().expect("i64 -> i32 failed")) != eslOK {
+                panic!()
+            };
             // p7_oprofile_ReconfigLength(info->om, dbsq->n);
-            libhmmer_sys::p7_oprofile_ReconfigLength(info.om, (*easel_sequence.c_sq).n.try_into().expect("i64 -> i32 failed"));
+            if libhmmer_sys::p7_oprofile_ReconfigLength(info.om, (*easel_sequence.c_sq).n.try_into().expect("i64 -> i32 failed")) != eslOK {
+                panic!()
+            };
 
             // p7_Pipeline(info->pli, info->om, info->bg, dbsq, NULL, info->th);
-            libhmmer_sys::p7_Pipeline(info.pli, info.om, info.bg, easel_sequence.c_sq, std::ptr::null_mut(), info.th);
+            let sstatus = libhmmer_sys::p7_Pipeline(info.pli, info.om, info.bg, easel_sequence.c_sq, std::ptr::null_mut(), info.th);
+            debug!("query p7_Pipeline sstatus {}", sstatus);
+            if sstatus != eslOK {
+                panic!("p7_Pipeline sstatus indicated failure, was {}", sstatus);
+            }
         }
     }
 
