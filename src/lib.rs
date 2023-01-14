@@ -38,23 +38,11 @@ impl EaselSequence {
 
         unsafe {
             // addbuf(sqfp, sq, n);
-            // i.e.
-            // while (nres) {
-            //     x  = sq->abc->inmap[(int) ascii->buf[ascii->bpos++]];
-            //     if (x <= 127) { nres--; sq->dsq[++sq->n] = x; }
-            //   } /* we skipped IGNORED, EOL. EOD, ILLEGAL don't occur; seebuf() already checked  */
-
-            // Malloc memory for the converted string
             // TODO: Free it if it is currently already malloc'd
-            // TODO: Maybe a faster way of doing conversion here, rather than one char at a time?
-            // Convert each residue to the indexed form
-            error!("Not quite the same as dsq, missing some stuff from the beginning compared to dsq from file.");
             (*self.c_sq).dsq = libc::malloc(seq.len()+2) as *mut u8;
-            let map = (*(*self.c_sq).abc).inmap;
-            for (i, c) in seq.iter().enumerate() {
-                let converted = map[*c as usize];
-                std::ptr::write((*self.c_sq).dsq.offset(i.try_into().unwrap()), converted);
-            }
+            // esl_abc_Digitize(const ESL_ALPHABET *a, const char *seq, ESL_DSQ *dsq)
+            // TODO: Check return value
+            libhmmer_sys::esl_abc_Digitize((*self.c_sq).abc, seq.as_ptr() as *const i8, (*self.c_sq).dsq);
 
             // sq->start = 1;
             (*self.c_sq).start = 1;
