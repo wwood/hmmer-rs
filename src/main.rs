@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 
 use hmmer_rs::*;
 
@@ -20,12 +20,7 @@ fn main() {
     // Need to add \0 to the end of the sequence otherwise it isn't treated as a proper string by esl code
     let seq: &[u8] = b"MVYSGPNAPIEVGNSLPLSEIPLATEIHNIELTPGKGGQLVRSAGSSAQLLAKEGNYVTLRLPSGEMRFVRKECYATIGQ\0";
 
-    let name = "S3.1.ribosomal_protein_L2_rplB~RK2_CYAPA"; // Not likely to be necessary, but just in case
-    unsafe {
-        (*query_seq.c_sq).name = CString::new(name.as_bytes()).unwrap().into_raw();
-    }
-
-    query_seq.replace_sequence(&seq);
+    query_seq.replace_sequence(&seq).unwrap();
     debug!("Query seq replaced;");
     error!("It appears that setting the sequence like does not work, so no results are returned. Need to bugfix.");
 
