@@ -1,5 +1,5 @@
-use std::ffi::CString;
 use log::*;
+use std::ffi::CString;
 
 use crate::{hmm::*, libhmmer_sys_extras::*, EaselSequence};
 
@@ -18,7 +18,7 @@ impl HmmerPipeline {
         // int              textw    = 0;
 
         // WORKER_INFO     *info     = NULL;
-        let bg = unsafe {libhmmer_sys::p7_bg_Create(hmm.c_alphabet())};
+        let bg = unsafe { libhmmer_sys::p7_bg_Create(hmm.c_alphabet()) };
         debug!("Background model created successfully");
 
         //   /* Convert to an optimized model */
@@ -27,33 +27,35 @@ impl HmmerPipeline {
         // p7_ProfileConfig(hmm, info->bg, gm, 100, p7_LOCAL); /* 100 is a dummy length for now; and MSVFilter requires local mode */
         // p7_oprofile_Convert(gm, om);                  /* <om> is now p7_LOCAL, multihit */
         let abc = hmm.c_alphabet();
-        gm = unsafe {
-            libhmmer_sys::p7_profile_Create(hmm.length() as i32, abc)
-        };
+        gm = unsafe { libhmmer_sys::p7_profile_Create(hmm.length() as i32, abc) };
         debug!("Profile created successfully");
-        om = unsafe {
-            libhmmer_sys::p7_oprofile_Create(hmm.length() as i32, abc)
-        };
+        om = unsafe { libhmmer_sys::p7_oprofile_Create(hmm.length() as i32, abc) };
         debug!("Optimized profile created successfully");
-        
+
         unsafe {
             libhmmer_sys::p7_ProfileConfig(hmm.c_hmm, bg, gm, 100, p7_LOCAL);
             debug!("Profile configured successfully");
             libhmmer_sys::p7_oprofile_Convert(gm, om);
             debug!("Optimized profile converted successfully");
         }
-        
+
         // /* Create processing pipeline and hit list */
         // info[i].th  = p7_tophits_Create();
         // info[i].om  = p7_oprofile_Clone(om);
         // info[i].pli = p7_pipeline_Create(go, om->M, 100, FALSE, p7_SEARCH_SEQS); /* L_hint = 100 is just a dummy for now */
         // status = p7_pli_NewModel(info[i].pli, info[i].om, info[i].bg);
         // if (status == eslEINVAL) p7_Fail(info->pli->errbuf);
-        let th = unsafe {libhmmer_sys::p7_tophits_Create()};
+        let th = unsafe { libhmmer_sys::p7_tophits_Create() };
         debug!("Tophits created successfully");
         // let om = libhmmer_sys::p7_oprofile_Clone(om);
         let pli = unsafe {
-            libhmmer_sys::p7_pipeline_Create(std::ptr::null_mut(), (*om).M, 100, 0, p7_SEARCH_SEQS as u32)
+            libhmmer_sys::p7_pipeline_Create(
+                std::ptr::null_mut(),
+                (*om).M,
+                100,
+                0,
+                p7_SEARCH_SEQS as u32,
+            )
         };
         debug!("Pipeline created successfully");
         unsafe {
@@ -64,16 +66,14 @@ impl HmmerPipeline {
         }
         debug!("Pipeline new model created successfully");
 
-        let info  = HmmsearchWorkerInfo {
+        let info = HmmsearchWorkerInfo {
             th: th,
             om: om,
             pli: pli,
             bg: bg,
         };
 
-        HmmerPipeline {
-            info: info,
-        }
+        HmmerPipeline { info: info }
     }
 
     pub fn run_hmm_on_file(&mut self, hmm: &Hmm, fasta_path: &std::path::Path) -> HmmsearchResult {
@@ -118,13 +118,20 @@ impl HmmerPipeline {
             eslEFORMAT => {
                 // panic!("Parse failed (sequence file {}):\n{}", fasta_path.to_string_lossy(), unsafe { libhmmer_sys::esl_sqfile_GetErrorBuf(dbfile) });
                 // TODO: Make the above compile
-                panic!("Parse failed (sequence file {})", fasta_path.to_string_lossy());
-            },
+                panic!(
+                    "Parse failed (sequence file {})",
+                    fasta_path.to_string_lossy()
+                );
+            }
             eslEOF => {
                 // do nothing
-            },
+            }
             _ => {
-                panic!("Unexpected error {} reading sequence file {}", sstatus, fasta_path.to_string_lossy());
+                panic!(
+                    "Unexpected error {} reading sequence file {}",
+                    sstatus,
+                    fasta_path.to_string_lossy()
+                );
             }
         }
 
@@ -149,7 +156,7 @@ impl HmmerPipeline {
         unsafe {
             libhmmer_sys::p7_tophits_SortBySortkey(self.info.th);
             libhmmer_sys::p7_tophits_Threshold(self.info.th, self.info.pli);
-            
+
             // TODO: Implement (optional) output of default output.
             // panic!("Need to get FILE* from fopen or stdout to do this");
             // libhmmer_sys::p7_tophits_Targets(FIXME, (*info).th, (*info).pli, textw);
@@ -168,7 +175,7 @@ impl HmmerPipeline {
             c_pli: self.info.pli,
         };
     }
-    
+
     // TODO: Add a coresponding free() method
     fn open_target_sequences(fasta_file: &str) -> *mut libhmmer_sys::esl_sqio_s {
         //   int              dbfmt    = eslSQFILE_UNKNOWN; /* format code for sequence database file          */
@@ -182,13 +189,13 @@ impl HmmerPipeline {
         //   if      (status == eslENOTFOUND) p7_Fail("Failed to open sequence file %s for reading\n",          cfg->dbfile);
         //   else if (status == eslEFORMAT)   p7_Fail("Sequence file %s is empty or misformatted\n",            cfg->dbfile);
         //   else if (status == eslEINVAL)    p7_Fail("Can't autodetect format of a stdin or .gz seqfile");
-        //   else if (status != eslOK)        p7_Fail("Unexpected error %d opening sequence file %s\n", status, cfg->dbfile); 
+        //   else if (status != eslOK)        p7_Fail("Unexpected error %d opening sequence file %s\n", status, cfg->dbfile);
         let file_pointer = CString::new(fasta_file.as_bytes()).unwrap().into_raw();
         let status = unsafe {
             // Open the file not assuming anything about its format, and let
             // autodetect do its thing. Possibly we should use eslSQFILE_FASTA.
             libhmmer_sys::esl_sqfile_Open(file_pointer, dbfmt, std::ptr::null(), &mut dbfp)
-        }; 
+        };
         println!("Opened fasta file with status {}", status);
 
         if status == eslENOTFOUND {
@@ -198,7 +205,10 @@ impl HmmerPipeline {
         } else if status == eslEINVAL {
             panic!("Can't autodetect format of a stdin or .gz seqfile");
         } else if status != eslOK {
-            panic!("Unexpected error {} opening sequence file {}", status, fasta_file);
+            panic!(
+                "Unexpected error {} opening sequence file {}",
+                status, fasta_file
+            );
         }
         return dbfp;
     }
@@ -206,7 +216,11 @@ impl HmmerPipeline {
     /// This method (called serial_loop in C) is not available in libhmmer_sys,
     /// so we have to implement it here. Intended as a direct replacement for
     /// the C function.
-    fn serial_loop_over_esl_sqio(&mut self, dbfp: *mut libhmmer_sys::esl_sqio_s, n_targetseqs: i32) -> i32 {
+    fn serial_loop_over_esl_sqio(
+        &mut self,
+        dbfp: *mut libhmmer_sys::esl_sqio_s,
+        n_targetseqs: i32,
+    ) -> i32 {
         debug!("serial_loop");
 
         //   int              status;                       /* easel return code                               */
@@ -215,7 +229,7 @@ impl HmmerPipeline {
         //   ESL_SQ   *dbsq     = NULL;   /* one target sequence (digital)  */
         #[allow(unused_mut, unused_assignments)]
         let mut dbsq: *mut libhmmer_sys::ESL_SQ = std::ptr::null_mut();
-        
+
         // int seq_cnt = 0;
         let mut seq_cnt: i32 = 0;
 
@@ -229,7 +243,9 @@ impl HmmerPipeline {
             debug!("K in abc is {}", (*abc_here).K);
             libhmmer_sys::esl_sq_CreateDigital(abc_here)
         };
-        debug!("dbsq created as digital, from abc {:?}", unsafe { (*dbsq).abc });
+        debug!("dbsq created as digital, from abc {:?}", unsafe {
+            (*dbsq).abc
+        });
 
         //   /* Main loop: */
         //   while ( (n_targetseqs==-1 || seq_cnt<n_targetseqs) &&  (sstatus = esl_sqio_Read(dbfp, dbsq)) == eslOK)
@@ -237,9 +253,7 @@ impl HmmerPipeline {
         sstatus = unsafe { libhmmer_sys::esl_sqio_Read(dbfp, dbsq) };
         debug!("esl_sqio_Read returned {}", sstatus);
         debug!("dbsq is {:?}", dbsq);
-        debug!("dbsq internals: {:#?}", EaselSequence {
-            c_sq: dbsq
-        });
+        debug!("dbsq internals: {:#?}", EaselSequence { c_sq: dbsq });
 
         while (n_targetseqs == -1 || seq_cnt < n_targetseqs) && sstatus == eslOK {
             unsafe {
@@ -247,12 +261,25 @@ impl HmmerPipeline {
                 libhmmer_sys::p7_pli_NewSeq(info.pli, dbsq);
 
                 // p7_bg_SetLength(info->bg, dbsq->n);
-                libhmmer_sys::p7_bg_SetLength(info.bg, (*dbsq).n.try_into().expect("i64 -> i32 failed"));
+                libhmmer_sys::p7_bg_SetLength(
+                    info.bg,
+                    (*dbsq).n.try_into().expect("i64 -> i32 failed"),
+                );
                 // p7_oprofile_ReconfigLength(info->om, dbsq->n);
-                libhmmer_sys::p7_oprofile_ReconfigLength(info.om, (*dbsq).n.try_into().expect("i64 -> i32 failed"));
+                libhmmer_sys::p7_oprofile_ReconfigLength(
+                    info.om,
+                    (*dbsq).n.try_into().expect("i64 -> i32 failed"),
+                );
 
                 // p7_Pipeline(info->pli, info->om, info->bg, dbsq, NULL, info->th);
-                let p7_sstatus = libhmmer_sys::p7_Pipeline(info.pli, info.om, info.bg, dbsq, std::ptr::null_mut(), info.th);
+                let p7_sstatus = libhmmer_sys::p7_Pipeline(
+                    info.pli,
+                    info.om,
+                    info.bg,
+                    dbsq,
+                    std::ptr::null_mut(),
+                    info.th,
+                );
                 if p7_sstatus != eslOK {
                     panic!("p7_Pipeline sstatus indicated failure, was {}", p7_sstatus);
                 }
@@ -261,7 +288,7 @@ impl HmmerPipeline {
                 sstatus = libhmmer_sys::esl_sqio_Read(dbfp, dbsq);
                 debug!("esl_sqio_Read returned {}", sstatus);
             }
-            
+
             // seq_cnt++;
             seq_cnt += 1;
             // esl_sq_Reuse(dbsq);
@@ -296,16 +323,37 @@ impl HmmerPipeline {
             };
 
             // p7_bg_SetLength(info->bg, dbsq->n);
-            if libhmmer_sys::p7_bg_SetLength(info.bg, (*easel_sequence.c_sq).n.try_into().expect("i64 -> i32 failed")) != eslOK {
+            if libhmmer_sys::p7_bg_SetLength(
+                info.bg,
+                (*easel_sequence.c_sq)
+                    .n
+                    .try_into()
+                    .expect("i64 -> i32 failed"),
+            ) != eslOK
+            {
                 panic!()
             };
             // p7_oprofile_ReconfigLength(info->om, dbsq->n);
-            if libhmmer_sys::p7_oprofile_ReconfigLength(info.om, (*easel_sequence.c_sq).n.try_into().expect("i64 -> i32 failed")) != eslOK {
+            if libhmmer_sys::p7_oprofile_ReconfigLength(
+                info.om,
+                (*easel_sequence.c_sq)
+                    .n
+                    .try_into()
+                    .expect("i64 -> i32 failed"),
+            ) != eslOK
+            {
                 panic!()
             };
 
             // p7_Pipeline(info->pli, info->om, info->bg, dbsq, NULL, info->th);
-            let sstatus = libhmmer_sys::p7_Pipeline(info.pli, info.om, info.bg, easel_sequence.c_sq, std::ptr::null_mut(), info.th);
+            let sstatus = libhmmer_sys::p7_Pipeline(
+                info.pli,
+                info.om,
+                info.bg,
+                easel_sequence.c_sq,
+                std::ptr::null_mut(),
+                info.th,
+            );
             debug!("query p7_Pipeline sstatus {}", sstatus);
             if sstatus != eslOK {
                 panic!("p7_Pipeline sstatus indicated failure, was {}", sstatus);
@@ -320,7 +368,6 @@ impl HmmerPipeline {
         }
     }
 }
-
 
 // typedef struct {
 //       P7_BG            *bg;	         /* null model                              */
@@ -346,6 +393,18 @@ impl Drop for HmmsearchResult {
         unsafe {
             libhmmer_sys::p7_tophits_Destroy(self.c_th);
             libhmmer_sys::p7_pipeline_Destroy(self.c_pli);
+        }
+    }
+}
+
+impl HmmsearchResult {
+    /// Number of reported hits
+    pub fn nreported(&self) -> usize {
+        unsafe {
+            (*self.c_th)
+                .nreported
+                .try_into()
+                .expect("i64 -> usize failed")
         }
     }
 }

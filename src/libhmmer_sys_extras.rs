@@ -21,7 +21,7 @@
 // #define eslESYNTAX        15    /* invalid user input syntax    */
 // #define eslERANGE         16    /* value out of allowed range   */
 // #define eslEDUP           17    /* saw a duplicate of something */
-// #define eslENOHALT        18    /* a failure to converge        */      
+// #define eslENOHALT        18    /* a failure to converge        */
 // #define eslENORESULT      19    /* no result was obtained       */
 // #define eslENODATA        20    /* no data provided, file empty */
 // #define eslETYPE          21    /* invalid type of argument     */
@@ -66,15 +66,11 @@ pub const eslEINACCURATE: i32 = 28;
 // /*****************************************************************
 //  * 16. P7_PIPELINE: H3's accelerated seq/profile comparison pipeline
 //  *****************************************************************/
-
 //  enum p7_pipemodes_e { p7_SEARCH_SEQS = 0, p7_SCAN_MODELS = 1 };
 //  enum p7_zsetby_e    { p7_ZSETBY_NTARGETS = 0, p7_ZSETBY_OPTION = 1, p7_ZSETBY_FILEINFO = 2 };
 //  enum p7_complementarity_e { p7_NOCOMPLEMENT    = 0, p7_COMPLEMENT   = 1 };
 pub const p7_SEARCH_SEQS: i32 = 0;
 // TODO: Add more, but eh for now.
-
-
-
 
 // #define p7_LOCAL     1		/* multihit local:  "fs" mode   */
 pub const p7_LOCAL: i32 = 1;

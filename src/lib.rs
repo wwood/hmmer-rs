@@ -1,12 +1,12 @@
 mod libhmmer_sys_extras;
 
-mod hmmsearch;
 mod hmm;
+mod hmmsearch;
 
+use libc;
+use log::*;
 use std::ffi::CStr;
 use std::fmt::Debug;
-use log::*;
-use libc;
 
 pub use crate::libhmmer_sys_extras::*;
 
@@ -27,10 +27,10 @@ impl EaselSequence {
     /// Replace (or initialise) the sequence data in this object with the given
     /// sequence. This method is a simplification of the sqascii_ReadSequence()
     /// C function in easel, in esl_sqio_ascii.c.
-    /// 
+    ///
     /// The input sequence is assumed to be in the same alphabet as the one used
     /// to instantiate this struct. It is not NULL terminated.
-    /// 
+    ///
     /// The seq given here is converted into a newly allocated dsq, so does not
     /// need to live after this function returns.
     pub fn replace_sequence(&mut self, seq: &[u8]) -> Result<(), &'static str> {
@@ -42,7 +42,7 @@ impl EaselSequence {
                 debug!("Freeing previous dsq pointer");
                 libc::free((*self.c_sq).dsq as *mut libc::c_void);
             }
-            (*self.c_sq).dsq = libc::malloc(seq.len()+2) as *mut u8;
+            (*self.c_sq).dsq = libc::malloc(seq.len() + 2) as *mut u8;
 
             // esl_abc_Digitize(const ESL_ALPHABET *a, const char *seq, ESL_DSQ *dsq)
             self.digitise_sequence(seq)?;
@@ -74,14 +74,14 @@ impl EaselSequence {
         // int64_t i;			/* position in seq */
         // int64_t j;			/* position in dsq */
         // ESL_DSQ x;
-      
+
         // status = eslOK;
         // dsq[0] = eslDSQ_SENTINEL;
-        // for (i = 0, j = 1; seq[i] != '\0'; i++) 
-        //   { 
+        // for (i = 0, j = 1; seq[i] != '\0'; i++)
+        //   {
         //     x = a->inmap[(int) seq[i]];
         //     if      (esl_abc_XIsValid(a, x)) dsq[j] = x;
-        //     else if (x == eslDSQ_IGNORED) continue; 
+        //     else if (x == eslDSQ_IGNORED) continue;
         //     else {
         //   status   = eslEINVAL;
         //   dsq[j] = esl_abc_XGetUnknown(a);
@@ -106,7 +106,7 @@ impl EaselSequence {
             if x < Kp {
                 // easel/esl_alphabet.h:#define esl_abc_XGetUnknown(a)       ((a)->Kp)
                 unsafe {
-                    *((*self.c_sq).dsq.offset((i+1) as isize)) = x;
+                    *((*self.c_sq).dsq.offset((i + 1) as isize)) = x;
                 };
             } else if x == libhmmer_sys_extras::eslDSQ_IGNORED {
                 continue;
@@ -117,7 +117,8 @@ impl EaselSequence {
 
         // Set final sentinal
         unsafe {
-            *((*self.c_sq).dsq.offset(seq.len() as isize + 1)) = libhmmer_sys_extras::eslDSQ_SENTINEL;
+            *((*self.c_sq).dsq.offset(seq.len() as isize + 1)) =
+                libhmmer_sys_extras::eslDSQ_SENTINEL;
         };
 
         return Ok(());
@@ -159,9 +160,15 @@ impl Debug for EaselSequence {
                 .field("c_sq", &self.c_sq)
                 .field("name", &CStr::from_ptr((*self.c_sq).name).to_string_lossy())
                 .field("acc", &CStr::from_ptr((*self.c_sq).acc).to_string_lossy())
-                .field("dsq", &CStr::from_ptr((*self.c_sq).dsq as *mut i8).to_string_lossy())
+                .field(
+                    "dsq",
+                    &CStr::from_ptr((*self.c_sq).dsq as *mut i8).to_string_lossy(),
+                )
                 .field("dsq ptr", &(*self.c_sq).dsq)
-                .field("dsq length", &libhmmer_sys::esl_abc_dsqlen((*self.c_sq).dsq))
+                .field(
+                    "dsq length",
+                    &libhmmer_sys::esl_abc_dsqlen((*self.c_sq).dsq),
+                )
                 .field("tax_id", &(*self.c_sq).tax_id)
                 // .field("seq", &CStr::from_ptr((*self.c_sq).seq).to_string_lossy())
                 // .field("ss", &CStr::from_ptr((*self.c_sq).ss).to_string_lossy())
@@ -171,7 +178,6 @@ impl Debug for EaselSequence {
                 .field("C", &(*self.c_sq).C)
                 .field("W", &(*self.c_sq).W)
                 .field("L", &(*self.c_sq).L)
-
                 .finish()
         }
     }
