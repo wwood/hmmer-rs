@@ -1,4 +1,4 @@
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 
 use hmmer_rs::*;
 
@@ -17,11 +17,18 @@ fn main() {
     let mut hmmsearch = HmmerPipeline::new(&hmm);
 
     let mut query_seq = EaselSequence::new(hmm.c_alphabet());
-    let seq: &[u8] = b"MVYSGPNAPIEVGNSLPLSEIPLATEIHNIELTPGKGGQLVRSAGSSAQLLAKEGNYVTLRLPSGEMRFVRKECYATIGQ";
+    // Need to add \0 to the end of the sequence otherwise it isn't treated as a proper string by esl code
+    let seq: &[u8] = b"MVYSGPNAPIEVGNSLPLSEIPLATEIHNIELTPGKGGQLVRSAGSSAQLLAKEGNYVTLRLPSGEMRFVRKECYATIGQ\0";
+
+    let name = "S3.1.ribosomal_protein_L2_rplB~RK2_CYAPA"; // Not likely to be necessary, but just in case
+    unsafe {
+        (*query_seq.c_sq).name = CString::new(name.as_bytes()).unwrap().into_raw();
+    }
 
     query_seq.replace_sequence(&seq);
     debug!("Query seq replaced;");
     error!("It appears that setting the sequence like does not work, so no results are returned. Need to bugfix.");
+
     hmmsearch.query(&query_seq);
 
     let hmmsearch_result = hmmsearch.get_results();

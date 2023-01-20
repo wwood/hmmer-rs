@@ -14,7 +14,7 @@ pub use crate::hmm::*;
 pub use crate::hmmsearch::*;
 
 pub struct EaselSequence {
-    c_sq: *mut libhmmer_sys::ESL_SQ,
+    pub c_sq: *mut libhmmer_sys::ESL_SQ,
 }
 
 impl EaselSequence {
@@ -34,7 +34,7 @@ impl EaselSequence {
     /// TODO: Can we do even less here, if all we need is to satisfy the
     /// hmmsearch pipeline?
     pub fn replace_sequence(&mut self, seq: &[u8]) {
-        let n = seq.len() as i64;
+        let n = seq.len() as i64 - 1; // minus one for NULL terminator
 
         unsafe {
             // addbuf(sqfp, sq, n);
@@ -42,7 +42,10 @@ impl EaselSequence {
             (*self.c_sq).dsq = libc::malloc(seq.len()+2) as *mut u8;
             // esl_abc_Digitize(const ESL_ALPHABET *a, const char *seq, ESL_DSQ *dsq)
             // TODO: Check return value
-            libhmmer_sys::esl_abc_Digitize((*self.c_sq).abc, seq.as_ptr() as *const i8, (*self.c_sq).dsq);
+            let sstatus = libhmmer_sys::esl_abc_Digitize((*self.c_sq).abc, seq.as_ptr() as *const i8, (*self.c_sq).dsq);
+            debug!("esl_abc_Digitize returned {}", sstatus);
+
+            (*self.c_sq).n = n;
 
             // sq->start = 1;
             (*self.c_sq).start = 1;
@@ -56,7 +59,7 @@ impl EaselSequence {
             (*self.c_sq).L = n;
         }
 
-        debug!("Replaced sequence, now have {:?}", self);
+        debug!("Replaced sequence, now have {:#?}", self);
     }
 }
 
@@ -97,6 +100,17 @@ impl Debug for EaselSequence {
                 .field("acc", &CStr::from_ptr((*self.c_sq).acc).to_string_lossy())
                 .field("dsq", &CStr::from_ptr((*self.c_sq).dsq as *mut i8).to_string_lossy())
                 .field("dsq ptr", &(*self.c_sq).dsq)
+                .field("dsq length", &libhmmer_sys::esl_abc_dsqlen((*self.c_sq).dsq))
+                .field("tax_id", &(*self.c_sq).tax_id)
+                // .field("seq", &CStr::from_ptr((*self.c_sq).seq).to_string_lossy())
+                // .field("ss", &CStr::from_ptr((*self.c_sq).ss).to_string_lossy())
+                .field("n", &(*self.c_sq).n)
+                .field("start", &(*self.c_sq).start)
+                .field("end", &(*self.c_sq).end)
+                .field("C", &(*self.c_sq).C)
+                .field("W", &(*self.c_sq).W)
+                .field("L", &(*self.c_sq).L)
+
                 .finish()
         }
     }

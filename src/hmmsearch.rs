@@ -237,7 +237,7 @@ impl HmmerPipeline {
         sstatus = unsafe { libhmmer_sys::esl_sqio_Read(dbfp, dbsq) };
         debug!("esl_sqio_Read returned {}", sstatus);
         debug!("dbsq is {:?}", dbsq);
-        debug!("dbsq internals: {:?}", EaselSequence {
+        debug!("dbsq internals: {:#?}", EaselSequence {
             c_sq: dbsq
         });
 
