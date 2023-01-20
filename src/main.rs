@@ -17,8 +17,7 @@ fn main() {
     let mut hmmsearch = HmmerPipeline::new(&hmm);
 
     let mut query_seq = EaselSequence::new(hmm.c_alphabet());
-    // Need to add \0 to the end of the sequence otherwise it isn't treated as a proper string by esl code
-    let seq: &[u8] = b"MVYSGPNAPIEVGNSLPLSEIPLATEIHNIELTPGKGGQLVRSAGSSAQLLAKEGNYVTLRLPSGEMRFVRKECYATIGQ\0";
+    let seq: &[u8] = b"MVYSGPNAPIEVGNSLPLSEIPLATEIHNIELTPGKGGQLVRSAGSSAQLLAKEGNYVTLRLPSGEMRFVRKECYATIGQ";
 
     query_seq.replace_sequence(&seq).unwrap();
     debug!("Query seq replaced;");
@@ -46,7 +45,7 @@ fn main() {
 fn hmmsearch_on_file() {
     let hmm = Hmm::read_one_from_path(std::path::Path::new("tests/data/DNGNGWU00010_mingle_output_good_seqs.hmm")).unwrap();
 
-    println!("HMM name: {}", unsafe { CStr::from_ptr((*hmm.c_hmm).name).to_string_lossy() });
+    println!("HMM name: {}", hmm.name());
 
     let mut hmmsearch = HmmerPipeline::new(&hmm);
 

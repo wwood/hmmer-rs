@@ -81,3 +81,14 @@ pub const p7_LOCAL: i32 = 1;
 
 // easel/easel.h:#define eslERRBUFSIZE 128
 pub const eslERRBUFSIZE: i32 = 128;
+
+// #define eslDSQ_SENTINEL 255	/* sentinel bytes 0,L+1 in a dsq */
+// #define eslDSQ_ILLEGAL  254	/* input symbol is unmapped and unexpected */
+// #define eslDSQ_IGNORED  253     /* input symbol is unmapped and ignored */
+// #define eslDSQ_EOL      252	/* input symbol marks end of a line */
+// #define eslDSQ_EOD      251     /* input symbol marks end of a seq record */
+pub const eslDSQ_SENTINEL: u8 = 255;
+pub const eslDSQ_ILLEGAL: u8 = 254;
+pub const eslDSQ_IGNORED: u8 = 253;
+pub const eslDSQ_EOL: u8 = 252;
+pub const eslDSQ_EOD: u8 = 251;

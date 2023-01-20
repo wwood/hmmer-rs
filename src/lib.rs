@@ -28,14 +28,13 @@ impl EaselSequence {
     /// sequence. This method is a simplification of the sqascii_ReadSequence()
     /// C function in easel, in esl_sqio_ascii.c.
     /// 
-    /// The seq given here should remain valid for the lifetime of this object,
-    /// or until this method is called again, because the internal C pointer
-    /// will be incorrect, causing undefined behavior.
+    /// The input sequence is assumed to be in the same alphabet as the one used
+    /// to instantiate this struct. It is not NULL terminated.
     /// 
-    /// TODO: Can we do even less here, if all we need is to satisfy the
-    /// hmmsearch pipeline?
+    /// The seq given here is converted into a newly allocated dsq, so does not
+    /// need to live after this function returns.
     pub fn replace_sequence(&mut self, seq: &[u8]) -> Result<(), &'static str> {
-        let n = seq.len() as i64 - 1; // minus one for NULL terminator
+        let n = seq.len() as i64; // minus one for NULL terminator
 
         unsafe {
             // free() previous sequence
@@ -44,13 +43,9 @@ impl EaselSequence {
                 libc::free((*self.c_sq).dsq as *mut libc::c_void);
             }
             (*self.c_sq).dsq = libc::malloc(seq.len()+2) as *mut u8;
+
             // esl_abc_Digitize(const ESL_ALPHABET *a, const char *seq, ESL_DSQ *dsq)
-            // TODO: Check return value
-            let sstatus = libhmmer_sys::esl_abc_Digitize((*self.c_sq).abc, seq.as_ptr() as *const i8, (*self.c_sq).dsq);
-            debug!("esl_abc_Digitize returned {}", sstatus);
-            if sstatus != 0 {
-                return Err("esl_abc_Digitize returned non-zero exitstatus {}, potentially indicating an invalid character in the sequence")
-            }
+            self.digitise_sequence(seq)?;
 
             (*self.c_sq).n = n;
 
@@ -67,6 +62,64 @@ impl EaselSequence {
         }
 
         debug!("Replaced sequence, now have {:#?}", self);
+        return Ok(());
+    }
+
+    // Reimplementation of libhmmer_sys::esl_abc_Digitize but don't require a
+    // NULL terminated sequence as input. Assumes self.dsq is already allocated.
+    fn digitise_sequence(&mut self, seq: &[u8]) -> Result<(), &'static str> {
+        // let sstatus = libhmmer_sys::esl_abc_Digitize((*self.c_sq).abc, seq.as_ptr() as *const i8, (*self.c_sq).dsq);
+
+        // int     status;
+        // int64_t i;			/* position in seq */
+        // int64_t j;			/* position in dsq */
+        // ESL_DSQ x;
+      
+        // status = eslOK;
+        // dsq[0] = eslDSQ_SENTINEL;
+        // for (i = 0, j = 1; seq[i] != '\0'; i++) 
+        //   { 
+        //     x = a->inmap[(int) seq[i]];
+        //     if      (esl_abc_XIsValid(a, x)) dsq[j] = x;
+        //     else if (x == eslDSQ_IGNORED) continue; 
+        //     else {
+        //   status   = eslEINVAL;
+        //   dsq[j] = esl_abc_XGetUnknown(a);
+        //     }
+        //     j++;
+        //   }
+        // dsq[j] = eslDSQ_SENTINEL;
+        // return status;
+
+        // easel/esl_alphabet.h:#define esl_abc_XIsValid(a, x)       ((x) < (a)->Kp)
+
+        // Set initial sentinal
+        unsafe {
+            *(*self.c_sq).dsq = libhmmer_sys_extras::eslDSQ_SENTINEL;
+        };
+
+        // Set actual sequence
+        #[allow(non_snake_case)]
+        let Kp: u8 = unsafe { (*(*self.c_sq).abc).Kp.try_into().unwrap() };
+        for (i, s) in seq.iter().enumerate() {
+            let x = unsafe { (*(*self.c_sq).abc).inmap[*s as usize] };
+            if x < Kp {
+                // easel/esl_alphabet.h:#define esl_abc_XGetUnknown(a)       ((a)->Kp)
+                unsafe {
+                    *((*self.c_sq).dsq.offset((i+1) as isize)) = x;
+                };
+            } else if x == libhmmer_sys_extras::eslDSQ_IGNORED {
+                continue;
+            } else {
+                return Err("Invalid character in sequence");
+            }
+        }
+
+        // Set final sentinal
+        unsafe {
+            *((*self.c_sq).dsq.offset(seq.len() as isize + 1)) = libhmmer_sys_extras::eslDSQ_SENTINEL;
+        };
+
         return Ok(());
     }
 }
