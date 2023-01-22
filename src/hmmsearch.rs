@@ -362,6 +362,12 @@ impl HmmerPipeline {
     }
 
     pub fn get_results(&mut self) -> HmmsearchResult {
+        unsafe {
+            debug!("Running p7_tophits_SortBySortkey");
+            libhmmer_sys::p7_tophits_SortBySortkey(self.info.th);
+            debug!("Running p7_tophits_Threshold");
+            libhmmer_sys::p7_tophits_Threshold(self.info.th, self.info.pli);
+        }
         HmmsearchResult {
             c_th: self.info.th,
             c_pli: self.info.pli,
