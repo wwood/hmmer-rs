@@ -71,20 +71,22 @@ mod tests {
         debug!("HMMsearch result: {:?}", hmmsearch_result);
 
         // th->hit[h]->score,
-        println!("nreported: {}", hmmsearch_result.nreported());
-        let first_hit = unsafe { *(*(*hmmsearch_result.c_th).hit.offset(0)) };
-        println!("Name of first hit {}", unsafe {
-            CStr::from_ptr(first_hit.name).to_string_lossy()
-        });
-        println!("Score of first hit overall {}", first_hit.score);
+        assert_eq!(1, hmmsearch_result.nreported());
 
-        let first_domain = unsafe { *first_hit.dcl.offset(0) };
-        println!("First domain score: {}", first_domain.bitscore);
-        // exp(th->hit[h]->lnP) * pli->Z;
-        let evalue = first_domain.lnP.exp() * unsafe { (*hmmsearch_result.c_pli).Z };
-        println!("First domain evalue: {:?}", evalue);
+        let mut num_hits = 0;
+        for hit in hmmsearch_result.hits() {
+            num_hits += 1;
+            assert_eq!(150.01991, hit.score());
+            let domains = hit.collect::<Vec<_>>();
 
-        assert_eq!(evalue, 1.4970530541655288e-48);
-        assert_eq!(hmmsearch_result.nreported(), 1);
+            assert_eq!(1, domains.len());
+            let first_domain = &domains[0];
+
+            assert_eq!(149.90887, first_domain.bitscore());
+
+            assert_eq!(1.4970530541655288e-48, first_domain.evalue());
+        }
+
+        assert_eq!(1, num_hits);
     }
 }
