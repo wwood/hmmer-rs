@@ -12,7 +12,7 @@ mod tests {
             "tests/data/DNGNGWU00010_mingle_output_good_seqs.hmm",
         )).unwrap();
         let hmm = &hmms[0];
-        
+
         println!("HMM name: {}", unsafe {
             CStr::from_ptr((*hmm.c_hmm).name).to_string_lossy()
         });
@@ -63,7 +63,6 @@ mod tests {
 
         query_seq.replace_sequence(&seq).unwrap();
         debug!("Query seq replaced;");
-        error!("It appears that setting the sequence like does not work, so no results are returned. Need to bugfix.");
 
         hmmsearch.query(&query_seq);
 

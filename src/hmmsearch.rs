@@ -476,9 +476,9 @@ impl Iterator for HmmsearchResultTopHit {
 
     fn next(&mut self) -> Option<Self::Item> {
         // TODO: Check for end of hits
-        // if self.current_domain >= unsafe { (*self.c_th).hit[self.current_domain].ndom } {
-        //     return None;
-        // }
+        if self.current_domain >= unsafe { (*self.c_hit).ndom.try_into().unwrap() } {
+            return None;
+        }
         println!("current domain counter {} ", self.current_domain);
         let domain = HmmsearchResultDomain {
             c_dom: unsafe {(*self.c_hit).dcl.offset(self.current_domain as isize)},

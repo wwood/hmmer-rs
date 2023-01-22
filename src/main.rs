@@ -24,7 +24,6 @@ fn main() {
 
     query_seq.replace_sequence(&seq).unwrap();
     debug!("Query seq replaced;");
-    error!("It appears that setting the sequence like does not work, so no results are returned. Need to bugfix.");
 
     hmmsearch.query(&query_seq);
 
@@ -40,7 +39,6 @@ fn main() {
             println!("New domain:");
             println!("Domain score: {}", domain.bitscore());
             println!("Domain evalue: {:?}", domain.evalue());
-            panic!("Stop here, need to implement stopping criteria for domain hits iterator.");
         }
     }
 }
