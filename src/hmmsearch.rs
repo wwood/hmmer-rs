@@ -1,5 +1,5 @@
 use log::*;
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 
 use crate::{hmm::*, libhmmer_sys_extras::*, EaselSequence};
 
@@ -412,5 +412,100 @@ impl HmmsearchResult {
                 .try_into()
                 .expect("i64 -> usize failed")
         }
+    }
+
+    pub fn hits(&self) -> HmmsearchResultTopHits {
+        HmmsearchResultTopHits {
+            c_th: self.c_th,
+            c_pli: self.c_pli,
+            current: 0,
+            nreported: self.nreported(),
+        }
+    }
+}
+
+pub struct HmmsearchResultTopHits {
+    c_th: *mut libhmmer_sys::p7_tophits_s,
+    c_pli: *mut libhmmer_sys::p7_pipeline_s,
+    current: usize,
+    nreported: usize,
+}
+
+impl Iterator for HmmsearchResultTopHits {
+    type Item = HmmsearchResultTopHit;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current >= self.nreported {
+            return None;
+        }
+
+        let hit = HmmsearchResultTopHit {
+            c_hit: unsafe { *((*self.c_th).hit.offset(self.current as isize)) },
+            c_pli: self.c_pli,
+            current_domain: 0,
+        };
+
+        self.current += 1;
+
+        Some(hit)
+    }
+}
+
+pub struct HmmsearchResultTopHit {
+    c_hit: *mut libhmmer_sys::p7_hit_s,
+    c_pli: *mut libhmmer_sys::p7_pipeline_s,
+    current_domain: usize,
+}
+
+impl HmmsearchResultTopHit {
+    // println!("Name of first hit {}", unsafe {
+    //     CStr::from_ptr(first_hit.name).to_string_lossy()
+    // });
+    pub fn name(&self) -> String {
+        unsafe { CStr::from_ptr((*self.c_hit).name).to_string_lossy().into_owned() }
+    }
+
+    // println!("Score of first hit overall {}", first_hit.score);
+    pub fn score(&self) -> f32 {
+        unsafe { (*self.c_hit).score }
+    }
+}
+
+impl Iterator for HmmsearchResultTopHit {
+    type Item = HmmsearchResultDomain;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // TODO: Check for end of hits
+        // if self.current_domain >= unsafe { (*self.c_th).hit[self.current_domain].ndom } {
+        //     return None;
+        // }
+        println!("current domain counter {} ", self.current_domain);
+        let domain = HmmsearchResultDomain {
+            c_dom: unsafe {(*self.c_hit).dcl.offset(self.current_domain as isize)},
+            c_pli: self.c_pli,
+        };
+
+        self.current_domain += 1;
+
+        Some(domain)
+    }
+}
+
+pub struct HmmsearchResultDomain {
+    c_dom: *mut libhmmer_sys::p7_dom_s,
+    c_pli: *mut libhmmer_sys::p7_pipeline_s,
+}
+
+impl HmmsearchResultDomain {
+    // println!("First domain score: {}", first_domain.bitscore);
+    pub fn bitscore(&self) -> f32 {
+        unsafe { (*self.c_dom).bitscore }
+    }
+
+    // // exp(th->hit[h]->lnP) * pli->Z;
+    // let evalue = first_domain.lnP.exp() * unsafe { (*hmmsearch_result.c_pli).Z };
+    // println!("First domain evalue: {:?}", evalue);
+    pub fn evalue(&self) -> f64 {
+        unsafe {(*self.c_dom).lnP.exp() * (*self.c_pli).Z }
     }
 }
