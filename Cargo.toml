@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Ben Woodcroft <benjwoodcroft@gmail.com>"]
 license = "GPL-3.0"
-license-file = "LICENSE"
 description = "Ergonomic Rust interface to HMMER"
 homepage = "https://github.com/wwood/hmmer-rs"
 repository = "https://github.com/wwood/hmmer-rs"
