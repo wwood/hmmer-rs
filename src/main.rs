@@ -11,7 +11,8 @@ fn main() {
     env_logger::init();
     let hmms = Hmm::read_hmms_from_path(std::path::Path::new(
         "tests/data/DNGNGWU00010_mingle_output_good_seqs.hmm",
-    )).unwrap();
+    ))
+    .unwrap();
     let hmm = &hmms[0];
 
     println!("HMM name: {}", hmm.name());
@@ -29,7 +30,10 @@ fn main() {
 
     let hmmsearch_result = hmmsearch.get_results();
 
-    println!("Total number of reported hits: {}", hmmsearch_result.nreported());
+    println!(
+        "Total number of reported hits: {}",
+        hmmsearch_result.nreported()
+    );
 
     for hit in hmmsearch_result.hits() {
         println!("New hit:");

@@ -32,7 +32,6 @@ impl Hmm {
         }
         debug!("HMM file opened successfully");
 
-
         // Read each HMM
         let mut hmms = Vec::new();
         loop {

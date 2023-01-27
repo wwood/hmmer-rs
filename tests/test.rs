@@ -10,7 +10,8 @@ mod tests {
     fn hmmsearch_on_file() {
         let hmms = Hmm::read_hmms_from_path(std::path::Path::new(
             "tests/data/DNGNGWU00010_mingle_output_good_seqs.hmm",
-        )).unwrap();
+        ))
+        .unwrap();
         let hmm = &hmms[0];
 
         println!("HMM name: {}", unsafe {
@@ -50,7 +51,8 @@ mod tests {
     fn test_hmmsearch_by_query() {
         let hmms = Hmm::read_hmms_from_path(std::path::Path::new(
             "tests/data/DNGNGWU00010_mingle_output_good_seqs.hmm",
-        )).unwrap();
+        ))
+        .unwrap();
         let hmm = &hmms[0];
 
         println!("HMM name: {}", hmm.name());

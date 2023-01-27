@@ -16,7 +16,7 @@ pub use crate::hmmsearch::*;
 pub enum Alphabet {
     Protein,
     RNA,
-    DNA
+    DNA,
 }
 
 pub struct EaselSequence {
@@ -26,12 +26,17 @@ pub struct EaselSequence {
 
 impl EaselSequence {
     pub fn new(alphabet: Alphabet) -> Self {
-        let c_alphabet = 
-            match alphabet {
-                // *const libhmmer_sys::ESL_ALPHABET
-                Alphabet::Protein => unsafe { libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslAMINO) },
-                Alphabet::RNA => unsafe { libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslRNA) },
-                Alphabet::DNA => unsafe { libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslDNA) },
+        let c_alphabet = match alphabet {
+            // *const libhmmer_sys::ESL_ALPHABET
+            Alphabet::Protein => unsafe {
+                libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslAMINO)
+            },
+            Alphabet::RNA => unsafe {
+                libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslRNA)
+            },
+            Alphabet::DNA => unsafe {
+                libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslDNA)
+            },
         };
         let c_sq = unsafe { libhmmer_sys::esl_sq_CreateDigital(c_alphabet) };
         Self { c_sq }
@@ -195,7 +200,6 @@ impl Debug for EaselSequence {
         }
     }
 }
-
 
 impl Drop for EaselSequence {
     fn drop(&mut self) {

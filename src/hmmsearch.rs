@@ -1,5 +1,5 @@
 use log::*;
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 
 use crate::{hmm::*, libhmmer_sys_extras::*, EaselSequence};
 
@@ -462,7 +462,11 @@ impl HmmsearchResultTopHit {
     //     CStr::from_ptr(first_hit.name).to_string_lossy()
     // });
     pub fn name(&self) -> String {
-        unsafe { CStr::from_ptr((*self.c_hit).name).to_string_lossy().into_owned() }
+        unsafe {
+            CStr::from_ptr((*self.c_hit).name)
+                .to_string_lossy()
+                .into_owned()
+        }
     }
 
     // println!("Score of first hit overall {}", first_hit.score);
@@ -481,7 +485,7 @@ impl Iterator for HmmsearchResultTopHit {
         }
         println!("current domain counter {} ", self.current_domain);
         let domain = HmmsearchResultDomain {
-            c_dom: unsafe {(*self.c_hit).dcl.offset(self.current_domain as isize)},
+            c_dom: unsafe { (*self.c_hit).dcl.offset(self.current_domain as isize) },
             c_pli: self.c_pli,
         };
 
@@ -506,6 +510,6 @@ impl HmmsearchResultDomain {
     // let evalue = first_domain.lnP.exp() * unsafe { (*hmmsearch_result.c_pli).Z };
     // println!("First domain evalue: {:?}", evalue);
     pub fn evalue(&self) -> f64 {
-        unsafe {(*self.c_dom).lnP.exp() * (*self.c_pli).Z }
+        unsafe { (*self.c_dom).lnP.exp() * (*self.c_pli).Z }
     }
 }
