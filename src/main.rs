@@ -7,7 +7,7 @@ use hmmer_rs::*;
 use log::*;
 
 fn main() {
-    env_logger::init();
+    // env_logger::init();
     let hmms = Hmm::read_hmms_from_path(std::path::Path::new(
         "tests/data/DNGNGWU00010_mingle_output_good_seqs.hmm",
     ))
