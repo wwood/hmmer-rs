@@ -1,7 +1,8 @@
+
 use log::*;
 use std::ffi::{CStr, CString};
 
-use crate::{hmm::*, libhmmer_sys_extras::*, EaselSequence};
+use crate::{hmm::*, EaselSequence, libhmmer_sys_extras};
 
 pub struct HmmerPipeline {
     info: HmmsearchWorkerInfo,
@@ -33,7 +34,7 @@ impl HmmerPipeline {
         debug!("Optimized profile created successfully");
 
         unsafe {
-            libhmmer_sys::p7_ProfileConfig(hmm.c_hmm, bg, gm, 100, p7_LOCAL);
+            libhmmer_sys::p7_ProfileConfig(hmm.c_hmm, bg, gm, 100, libhmmer_sys_extras::p7_LOCAL);
             debug!("Profile configured successfully");
             libhmmer_sys::p7_oprofile_Convert(gm, om);
             debug!("Optimized profile converted successfully");
@@ -54,13 +55,13 @@ impl HmmerPipeline {
                 (*om).M,
                 100,
                 0,
-                p7_SEARCH_SEQS as u32,
+                libhmmer_sys_extras::p7_SEARCH_SEQS as u32,
             )
         };
         debug!("Pipeline created successfully");
         unsafe {
             let status = libhmmer_sys::p7_pli_NewModel(pli, om, bg);
-            if status == eslEINVAL {
+            if status == libhmmer_sys::eslEINVAL as i32 {
                 panic!(); // TODO: Better msg
             }
         }
@@ -108,9 +109,13 @@ impl HmmerPipeline {
         // default:
         //   esl_fatal("Unexpected error %d reading sequence file %s", sstatus, dbfp->filename);
         // }
-        #[allow(non_upper_case_globals)]
+
+        // Unclear to me why restating these consts is necessary to avoid
+        // compile-time warnings.
+        const ESL_FORMAT: i32 = libhmmer_sys::eslEFORMAT as i32;
+        const ESL_EOF: i32 = libhmmer_sys::eslEOF as i32;
         match sstatus {
-            eslEFORMAT => {
+            ESL_FORMAT => {
                 // panic!("Parse failed (sequence file {}):\n{}", fasta_path.to_string_lossy(), unsafe { libhmmer_sys::esl_sqfile_GetErrorBuf(dbfile) });
                 // TODO: Make the above compile
                 panic!(
@@ -118,7 +123,7 @@ impl HmmerPipeline {
                     fasta_path.to_string_lossy()
                 );
             }
-            eslEOF => {
+            ESL_EOF => {
                 // do nothing
             }
             _ => {
@@ -193,13 +198,13 @@ impl HmmerPipeline {
         };
         println!("Opened fasta file with status {status}");
 
-        if status == eslENOTFOUND {
+        if status == libhmmer_sys::eslENOTFOUND as i32 {
             panic!("Failed to open sequence file {fasta_file} for reading");
-        } else if status == eslEFORMAT {
+        } else if status == libhmmer_sys::eslEFORMAT as i32 {
             panic!("Sequence file {fasta_file} is empty or misformatted");
-        } else if status == eslEINVAL {
+        } else if status == libhmmer_sys::eslEINVAL as i32 {
             panic!("Can't autodetect format of a stdin or .gz seqfile");
-        } else if status != eslOK {
+        } else if status != libhmmer_sys::eslOK as i32 {
             panic!("Unexpected error {status} opening sequence file {fasta_file}");
         }
         dbfp
@@ -247,7 +252,7 @@ impl HmmerPipeline {
         debug!("dbsq is {:?}", dbsq);
         debug!("dbsq internals: {:#?}", EaselSequence { c_sq: dbsq });
 
-        while (n_targetseqs == -1 || seq_cnt < n_targetseqs) && sstatus == eslOK {
+        while (n_targetseqs == -1 || seq_cnt < n_targetseqs) && sstatus == libhmmer_sys::eslOK as i32 {
             unsafe {
                 // p7_pli_NewSeq(info->pli, dbsq);
                 libhmmer_sys::p7_pli_NewSeq(info.pli, dbsq);
@@ -272,7 +277,7 @@ impl HmmerPipeline {
                     std::ptr::null_mut(),
                     info.th,
                 );
-                if p7_sstatus != eslOK {
+                if p7_sstatus != libhmmer_sys::eslOK as i32 {
                     panic!("p7_Pipeline sstatus indicated failure, was {p7_sstatus}");
                 }
 
@@ -294,7 +299,7 @@ impl HmmerPipeline {
         // if (n_targetseqs!=-1 && seq_cnt==n_targetseqs)
         // sstatus = eslEOF;
         if n_targetseqs != -1 && seq_cnt == n_targetseqs {
-            sstatus = eslEOF;
+            sstatus = libhmmer_sys::eslEOF as i32;
         }
 
         // esl_sq_Destroy(dbsq);
@@ -310,7 +315,7 @@ impl HmmerPipeline {
 
         unsafe {
             // p7_pli_NewSeq(info->pli, dbsq);
-            if libhmmer_sys::p7_pli_NewSeq(info.pli, easel_sequence.c_sq) != eslOK {
+            if libhmmer_sys::p7_pli_NewSeq(info.pli, easel_sequence.c_sq) != libhmmer_sys::eslOK as i32 {
                 panic!()
             };
 
@@ -321,7 +326,7 @@ impl HmmerPipeline {
                     .n
                     .try_into()
                     .expect("i64 -> i32 failed"),
-            ) != eslOK
+            ) != libhmmer_sys::eslOK as i32
             {
                 panic!()
             };
@@ -332,7 +337,7 @@ impl HmmerPipeline {
                     .n
                     .try_into()
                     .expect("i64 -> i32 failed"),
-            ) != eslOK
+            ) != libhmmer_sys::eslOK as i32
             {
                 panic!()
             };
@@ -347,7 +352,7 @@ impl HmmerPipeline {
                 info.th,
             );
             debug!("query p7_Pipeline sstatus {}", sstatus);
-            if sstatus != eslOK {
+            if sstatus != libhmmer_sys::eslOK as i32 {
                 panic!("p7_Pipeline sstatus indicated failure, was {sstatus}");
             }
         }

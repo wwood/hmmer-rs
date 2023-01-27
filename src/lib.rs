@@ -1,13 +1,10 @@
 mod libhmmer_sys_extras;
-
 mod hmm;
 mod hmmsearch;
 
 use log::*;
 use std::ffi::CStr;
 use std::fmt::Debug;
-
-pub use crate::libhmmer_sys_extras::*;
 
 pub use crate::hmm::*;
 pub use crate::hmmsearch::*;
@@ -28,13 +25,13 @@ impl EaselSequence {
         let c_alphabet = match alphabet {
             // *const libhmmer_sys::ESL_ALPHABET
             Alphabet::Protein => unsafe {
-                libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslAMINO)
+                libhmmer_sys::esl_alphabet_Create(libhmmer_sys::eslAMINO.try_into().unwrap())
             },
             Alphabet::RNA => unsafe {
-                libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslRNA)
+                libhmmer_sys::esl_alphabet_Create(libhmmer_sys::eslRNA.try_into().unwrap())
             },
             Alphabet::DNA => unsafe {
-                libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslDNA)
+                libhmmer_sys::esl_alphabet_Create(libhmmer_sys::eslDNA.try_into().unwrap())
             },
         };
         let c_sq = unsafe { libhmmer_sys::esl_sq_CreateDigital(c_alphabet) };
@@ -112,7 +109,7 @@ impl EaselSequence {
 
         // Set initial sentinal
         unsafe {
-            *(*self.c_sq).dsq = libhmmer_sys_extras::eslDSQ_SENTINEL;
+            *(*self.c_sq).dsq = libhmmer_sys::eslDSQ_SENTINEL as u8;
         };
 
         // Set actual sequence
@@ -125,7 +122,7 @@ impl EaselSequence {
                 unsafe {
                     *(*self.c_sq).dsq.add(i + 1) = x;
                 };
-            } else if x == libhmmer_sys_extras::eslDSQ_IGNORED {
+            } else if x == libhmmer_sys::eslDSQ_IGNORED as u8 {
                 continue;
             } else {
                 return Err("Invalid character in sequence");
@@ -135,7 +132,7 @@ impl EaselSequence {
         // Set final sentinal
         unsafe {
             *((*self.c_sq).dsq.offset(seq.len() as isize + 1)) =
-                libhmmer_sys_extras::eslDSQ_SENTINEL;
+                libhmmer_sys::eslDSQ_SENTINEL as u8;
         };
 
         Ok(())

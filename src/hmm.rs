@@ -2,8 +2,6 @@ use log::*;
 use std::ffi::CStr;
 use std::ffi::CString;
 
-use crate::libhmmer_sys_extras::*;
-
 pub struct Hmm {
     pub c_hmm: *mut libhmmer_sys::P7_HMM,
 }
@@ -12,7 +10,7 @@ impl Hmm {
     pub fn read_hmms_from_path(path: &std::path::Path) -> Result<Vec<Hmm>, &'static str> {
         // char          errbuf[eslERRBUFSIZE];
         #[allow(unused_mut)]
-        let mut errbuf = CString::new(vec![1; eslERRBUFSIZE as usize])
+        let mut errbuf = CString::new(vec![1; libhmmer_sys::eslERRBUFSIZE as usize])
             .unwrap()
             .into_raw();
 
@@ -42,7 +40,7 @@ impl Hmm {
             let mut hmm: *mut libhmmer_sys::P7_HMM = std::ptr::null_mut();
 
             let status2 = unsafe { libhmmer_sys::p7_hmmfile_Read(hfp, &mut abc, &mut hmm) };
-            if status2 == eslEOF {
+            if status2 == libhmmer_sys::eslEOF as i32 {
                 debug!("EOF reached");
                 break;
             } else if status2 != 0 {
