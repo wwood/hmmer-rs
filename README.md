@@ -2,6 +2,8 @@ Rust interface to the [HMMER C code](https://github.com/EddyRivasLab/hmmer). Thi
 
 It is quite new and not all of the functionality of HMMER is exposed yet. If you need something that is not exposed, please open an issue or a pull request, or better yet have a go at implementing it yourself.
 
+As this is still early days, the API is likely to change. If you are using this library, please pin your dependency to a specific version.
+
 Example usage, running a HMMSEARCH:
 
 ```rust
