@@ -191,19 +191,16 @@ impl HmmerPipeline {
             // autodetect do its thing. Possibly we should use eslSQFILE_FASTA.
             libhmmer_sys::esl_sqfile_Open(file_pointer, dbfmt, std::ptr::null(), &mut dbfp)
         };
-        println!("Opened fasta file with status {}", status);
+        println!("Opened fasta file with status {status}");
 
         if status == eslENOTFOUND {
-            panic!("Failed to open sequence file {} for reading", fasta_file);
+            panic!("Failed to open sequence file {fasta_file} for reading");
         } else if status == eslEFORMAT {
-            panic!("Sequence file {} is empty or misformatted", fasta_file);
+            panic!("Sequence file {fasta_file} is empty or misformatted");
         } else if status == eslEINVAL {
             panic!("Can't autodetect format of a stdin or .gz seqfile");
         } else if status != eslOK {
-            panic!(
-                "Unexpected error {} opening sequence file {}",
-                status, fasta_file
-            );
+            panic!("Unexpected error {status} opening sequence file {fasta_file}");
         }
         dbfp
     }
@@ -276,12 +273,12 @@ impl HmmerPipeline {
                     info.th,
                 );
                 if p7_sstatus != eslOK {
-                    panic!("p7_Pipeline sstatus indicated failure, was {}", p7_sstatus);
+                    panic!("p7_Pipeline sstatus indicated failure, was {p7_sstatus}");
                 }
 
                 // In the C code, this is part of the while loop condition.
                 sstatus = libhmmer_sys::esl_sqio_Read(dbfp, dbsq);
-                debug!("esl_sqio_Read returned {}", sstatus);
+                debug!("esl_sqio_Read returned {sstatus}");
             }
 
             // seq_cnt++;
