@@ -88,3 +88,18 @@ pub const eslDSQ_ILLEGAL: u8 = 254;
 pub const eslDSQ_IGNORED: u8 = 253;
 pub const eslDSQ_EOL: u8 = 252;
 pub const eslDSQ_EOD: u8 = 251;
+
+// #define eslUNKNOWN     0        /* 0=unknown is easel-wide convention; don't change */
+// #define eslRNA         1
+// #define eslDNA         2		
+// #define eslAMINO       3		
+// #define eslCOINS       4	/* for toy examples      */
+// #define eslDICE        5	/* also for toy examples */
+// #define eslNONSTANDARD 6
+pub const eslUNKNOWN: i32 = 0;
+pub const eslRNA: i32 = 1;
+pub const eslDNA: i32 = 2;
+pub const eslAMINO: i32 = 3;
+pub const eslCOINS: i32 = 4;
+pub const eslDICE: i32 = 5;
+pub const eslNONSTANDARD: i32 = 6;

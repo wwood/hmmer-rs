@@ -57,7 +57,7 @@ mod tests {
 
         let mut hmmsearch = HmmerPipeline::new(&hmm);
 
-        let mut query_seq = EaselSequence::new(hmm.c_alphabet());
+        let mut query_seq = EaselSequence::new(Alphabet::Protein);
         let seq: &[u8] =
             b"MVYSGPNAPIEVGNSLPLSEIPLATEIHNIELTPGKGGQLVRSAGSSAQLLAKEGNYVTLRLPSGEMRFVRKECYATIGQ";
 

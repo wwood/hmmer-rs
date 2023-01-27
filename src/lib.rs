@@ -13,14 +13,27 @@ pub use crate::libhmmer_sys_extras::*;
 pub use crate::hmm::*;
 pub use crate::hmmsearch::*;
 
+pub enum Alphabet {
+    Protein,
+    RNA,
+    DNA
+}
+
 pub struct EaselSequence {
     // TODO: Implement Drop trait to free this
     pub c_sq: *mut libhmmer_sys::ESL_SQ,
 }
 
 impl EaselSequence {
-    pub fn new(alphabet: *const libhmmer_sys::ESL_ALPHABET) -> Self {
-        let c_sq = unsafe { libhmmer_sys::esl_sq_CreateDigital(alphabet) };
+    pub fn new(alphabet: Alphabet) -> Self {
+        let c_alphabet = 
+            match alphabet {
+                // *const libhmmer_sys::ESL_ALPHABET
+                Alphabet::Protein => unsafe { libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslAMINO) },
+                Alphabet::RNA => unsafe { libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslRNA) },
+                Alphabet::DNA => unsafe { libhmmer_sys::esl_alphabet_Create(libhmmer_sys_extras::eslDNA) },
+        };
+        let c_sq = unsafe { libhmmer_sys::esl_sq_CreateDigital(c_alphabet) };
         Self { c_sq }
     }
 
@@ -34,7 +47,7 @@ impl EaselSequence {
     /// The seq given here is converted into a newly allocated dsq, so does not
     /// need to live after this function returns.
     pub fn replace_sequence(&mut self, seq: &[u8]) -> Result<(), &'static str> {
-        let n = seq.len() as i64; // minus one for NULL terminator
+        let n = seq.len() as i64;
 
         unsafe {
             // free() previous sequence
@@ -179,6 +192,15 @@ impl Debug for EaselSequence {
                 .field("W", &(*self.c_sq).W)
                 .field("L", &(*self.c_sq).L)
                 .finish()
+        }
+    }
+}
+
+
+impl Drop for EaselSequence {
+    fn drop(&mut self) {
+        unsafe {
+            libhmmer_sys::esl_sq_Destroy(self.c_sq);
         }
     }
 }
