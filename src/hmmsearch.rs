@@ -348,7 +348,7 @@ impl HmmerPipeline {
             );
             debug!("query p7_Pipeline sstatus {}", sstatus);
             if sstatus != eslOK {
-                panic!("p7_Pipeline sstatus indicated failure, was {}", sstatus);
+                panic!("p7_Pipeline sstatus indicated failure, was {sstatus}");
             }
         }
     }
