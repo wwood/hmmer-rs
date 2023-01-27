@@ -66,14 +66,9 @@ impl HmmerPipeline {
         }
         debug!("Pipeline new model created successfully");
 
-        let info = HmmsearchWorkerInfo {
-            th: th,
-            om: om,
-            pli: pli,
-            bg: bg,
-        };
+        let info = HmmsearchWorkerInfo { th, om, pli, bg };
 
-        HmmerPipeline { info: info }
+        HmmerPipeline { info }
     }
 
     pub fn run_hmm_on_file(&mut self, hmm: &Hmm, fasta_path: &std::path::Path) -> HmmsearchResult {
@@ -170,10 +165,10 @@ impl HmmerPipeline {
 
         // TODO: Destroy, free, etc.
 
-        return HmmsearchResult {
+        HmmsearchResult {
             c_th: self.info.th,
             c_pli: self.info.pli,
-        };
+        }
     }
 
     // TODO: Add a coresponding free() method
@@ -210,7 +205,7 @@ impl HmmerPipeline {
                 status, fasta_file
             );
         }
-        return dbfp;
+        dbfp
     }
 
     /// This method (called serial_loop in C) is not available in libhmmer_sys,
@@ -310,7 +305,7 @@ impl HmmerPipeline {
             libhmmer_sys::esl_sq_Destroy(dbsq);
         }
 
-        return sstatus;
+        sstatus
     }
 
     pub fn query(&mut self, easel_sequence: &EaselSequence) {
@@ -440,7 +435,7 @@ impl Iterator for HmmsearchResultTopHits {
         }
 
         let hit = HmmsearchResultTopHit {
-            c_hit: unsafe { *((*self.c_th).hit.offset(self.current as isize)) },
+            c_hit: unsafe { *(*self.c_th).hit.add(self.current) },
             c_pli: self.c_pli,
             current_domain: 0,
         };
@@ -485,7 +480,7 @@ impl Iterator for HmmsearchResultTopHit {
         }
         println!("current domain counter {} ", self.current_domain);
         let domain = HmmsearchResultDomain {
-            c_dom: unsafe { (*self.c_hit).dcl.offset(self.current_domain as isize) },
+            c_dom: unsafe { (*self.c_hit).dcl.add(self.current_domain) },
             c_pli: self.c_pli,
         };
 

@@ -3,7 +3,6 @@ mod libhmmer_sys_extras;
 mod hmm;
 mod hmmsearch;
 
-use libc;
 use log::*;
 use std::ffi::CStr;
 use std::fmt::Debug;
@@ -56,7 +55,7 @@ impl EaselSequence {
 
         unsafe {
             // free() previous sequence
-            if (*self.c_sq).dsq != std::ptr::null_mut() {
+            if (*self.c_sq).dsq.is_null() {
                 debug!("Freeing previous dsq pointer");
                 libc::free((*self.c_sq).dsq as *mut libc::c_void);
             }
@@ -80,7 +79,7 @@ impl EaselSequence {
         }
 
         debug!("Replaced sequence, now have {:#?}", self);
-        return Ok(());
+        Ok(())
     }
 
     // Reimplementation of libhmmer_sys::esl_abc_Digitize but don't require a
@@ -124,7 +123,7 @@ impl EaselSequence {
             if x < Kp {
                 // easel/esl_alphabet.h:#define esl_abc_XGetUnknown(a)       ((a)->Kp)
                 unsafe {
-                    *((*self.c_sq).dsq.offset((i + 1) as isize)) = x;
+                    *(*self.c_sq).dsq.add(i + 1) = x;
                 };
             } else if x == libhmmer_sys_extras::eslDSQ_IGNORED {
                 continue;
@@ -139,7 +138,7 @@ impl EaselSequence {
                 libhmmer_sys_extras::eslDSQ_SENTINEL;
         };
 
-        return Ok(());
+        Ok(())
     }
 }
 

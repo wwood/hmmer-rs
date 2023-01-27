@@ -59,11 +59,11 @@ impl Hmm {
             let _ = CString::from_raw(hmmfile);
         }
 
-        return Ok(hmms);
+        Ok(hmms)
     }
 
     pub fn c_alphabet(&self) -> *const libhmmer_sys::ESL_ALPHABET {
-        return unsafe { (*self.c_hmm).abc };
+        unsafe { (*self.c_hmm).abc }
     }
 
     pub fn name(&self) -> String {
@@ -75,13 +75,13 @@ impl Hmm {
     }
 
     pub fn length(&self) -> u32 {
-        return unsafe { (*self.c_hmm).M as u32 };
+        unsafe { (*self.c_hmm).M as u32 }
     }
 
     pub fn acc(&self) -> String {
         let my_acc = unsafe { (*self.c_hmm).acc };
         if my_acc.is_null() {
-            return "".to_string(); // Otherwise we get a segfault
+            "".to_string() // Otherwise we get a segfault
         } else {
             return unsafe { CStr::from_ptr(my_acc).to_string_lossy().to_string() };
         }
@@ -90,7 +90,7 @@ impl Hmm {
     pub fn desc(&self) -> String {
         let my_desc = unsafe { (*self.c_hmm).desc };
         if my_desc.is_null() {
-            return "".to_string(); // Otherwise we get a segfault
+            "".to_string() // Otherwise we get a segfault
         } else {
             return unsafe { CStr::from_ptr(my_desc).to_string_lossy().to_string() };
         }

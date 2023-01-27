@@ -4,7 +4,6 @@ use std::ffi::CStr;
 
 use hmmer_rs::*;
 
-use env_logger;
 use log::*;
 
 fn main() {
@@ -17,13 +16,13 @@ fn main() {
 
     println!("HMM name: {}", hmm.name());
 
-    let mut hmmsearch = HmmerPipeline::new(&hmm);
+    let mut hmmsearch = HmmerPipeline::new(hmm);
 
     let mut query_seq = EaselSequence::new(Alphabet::Protein);
     let seq: &[u8] =
         b"MVYSGPNAPIEVGNSLPLSEIPLATEIHNIELTPGKGGQLVRSAGSSAQLLAKEGNYVTLRLPSGEMRFVRKECYATIGQ";
 
-    query_seq.replace_sequence(&seq).unwrap();
+    query_seq.replace_sequence(seq).unwrap();
     debug!("Query seq replaced;");
 
     hmmsearch.query(&query_seq);

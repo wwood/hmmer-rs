@@ -18,10 +18,10 @@ mod tests {
             CStr::from_ptr((*hmm.c_hmm).name).to_string_lossy()
         });
 
-        let mut hmmsearch = HmmerPipeline::new(&hmm);
+        let mut hmmsearch = HmmerPipeline::new(hmm);
 
         let hmmsearch_result = hmmsearch.run_hmm_on_file(
-            &hmm,
+            hmm,
             std::path::Path::new("tests/data/graftm4o5_y58f.head2.faa"),
         );
 
@@ -57,13 +57,13 @@ mod tests {
 
         println!("HMM name: {}", hmm.name());
 
-        let mut hmmsearch = HmmerPipeline::new(&hmm);
+        let mut hmmsearch = HmmerPipeline::new(hmm);
 
         let mut query_seq = EaselSequence::new(Alphabet::Protein);
         let seq: &[u8] =
             b"MVYSGPNAPIEVGNSLPLSEIPLATEIHNIELTPGKGGQLVRSAGSSAQLLAKEGNYVTLRLPSGEMRFVRKECYATIGQ";
 
-        query_seq.replace_sequence(&seq).unwrap();
+        query_seq.replace_sequence(seq).unwrap();
         debug!("Query seq replaced;");
 
         hmmsearch.query(&query_seq);
