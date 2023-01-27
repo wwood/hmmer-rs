@@ -1,6 +1,5 @@
 #![allow(non_upper_case_globals)]
 
-
 // /*****************************************************************
 //  * 16. P7_PIPELINE: H3's accelerated seq/profile comparison pipeline
 //  *****************************************************************/

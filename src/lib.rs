@@ -1,6 +1,6 @@
-mod libhmmer_sys_extras;
 mod hmm;
 mod hmmsearch;
+mod libhmmer_sys_extras;
 
 use log::*;
 use std::ffi::CStr;

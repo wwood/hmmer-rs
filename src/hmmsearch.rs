@@ -1,8 +1,7 @@
-
 use log::*;
 use std::ffi::{CStr, CString};
 
-use crate::{hmm::*, EaselSequence, libhmmer_sys_extras};
+use crate::{hmm::*, libhmmer_sys_extras, EaselSequence};
 
 pub struct HmmerPipeline {
     info: HmmsearchWorkerInfo,
@@ -252,7 +251,9 @@ impl HmmerPipeline {
         debug!("dbsq is {:?}", dbsq);
         debug!("dbsq internals: {:#?}", EaselSequence { c_sq: dbsq });
 
-        while (n_targetseqs == -1 || seq_cnt < n_targetseqs) && sstatus == libhmmer_sys::eslOK as i32 {
+        while (n_targetseqs == -1 || seq_cnt < n_targetseqs)
+            && sstatus == libhmmer_sys::eslOK as i32
+        {
             unsafe {
                 // p7_pli_NewSeq(info->pli, dbsq);
                 libhmmer_sys::p7_pli_NewSeq(info.pli, dbsq);
@@ -315,7 +316,9 @@ impl HmmerPipeline {
 
         unsafe {
             // p7_pli_NewSeq(info->pli, dbsq);
-            if libhmmer_sys::p7_pli_NewSeq(info.pli, easel_sequence.c_sq) != libhmmer_sys::eslOK as i32 {
+            if libhmmer_sys::p7_pli_NewSeq(info.pli, easel_sequence.c_sq)
+                != libhmmer_sys::eslOK as i32
+            {
                 panic!()
             };
 
