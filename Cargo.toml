@@ -2,6 +2,13 @@
 name = "hmmer-rs"
 version = "0.1.0"
 edition = "2021"
+authors = ["Ben Woodcroft <benjwoodcroft@gmail.com>"]
+license = "GPL-3.0"
+description = "Ergonomic Rust interface to HMMER"
+homepage = "https://github.com/wwood/hmmer-rs"
+repository = "https://github.com/wwood/hmmer-rs"
+documentation = "https://github.com/wwood/hmmer-rs"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
