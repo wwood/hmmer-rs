@@ -71,6 +71,11 @@ impl HmmerPipeline {
         HmmerPipeline { info }
     }
 
+    /// Access the raw pipeline pointer (for setting thresholds in-place).
+    pub fn pli(&mut self) -> *mut libhmmer_sys::P7_PIPELINE {
+        self.info.pli
+    }
+
     /// Set the per-sequence E-value threshold (equivalent to hmmsearch -E).
     /// Default: 10.0
     pub fn with_seq_evalue(self, e: f64) -> Self {

@@ -65,11 +65,11 @@ impl Hmm {
     }
 
     pub fn name(&self) -> String {
-        return unsafe {
+        unsafe {
             CStr::from_ptr((*self.c_hmm).name)
                 .to_string_lossy()
                 .to_string()
-        };
+        }
     }
 
     pub fn length(&self) -> u32 {
@@ -81,7 +81,7 @@ impl Hmm {
         if my_acc.is_null() {
             "".to_string() // Otherwise we get a segfault
         } else {
-            return unsafe { CStr::from_ptr(my_acc).to_string_lossy().to_string() };
+            unsafe { CStr::from_ptr(my_acc).to_string_lossy().to_string() }
         }
     }
 
@@ -90,7 +90,7 @@ impl Hmm {
         if my_desc.is_null() {
             "".to_string() // Otherwise we get a segfault
         } else {
-            return unsafe { CStr::from_ptr(my_desc).to_string_lossy().to_string() };
+            unsafe { CStr::from_ptr(my_desc).to_string_lossy().to_string() }
         }
     }
 }

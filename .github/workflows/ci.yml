@@ -21,6 +21,20 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y libclang-dev
       - run: cargo test
 
+  python-test:
+    name: Python Bindings Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y libclang-dev
+      - run: pip install maturin
+      - run: maturin develop
+      - run: python tests/test_python.py
+
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest

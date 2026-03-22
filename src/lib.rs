@@ -2,6 +2,8 @@ mod hmm;
 mod hmmalign;
 mod hmmsearch;
 mod libhmmer_sys_extras;
+#[cfg(feature = "python")]
+mod python;
 
 use log::*;
 use std::ffi::{CStr, CString};
