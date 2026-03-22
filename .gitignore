@@ -1,3 +1,6 @@
 /target
 hmmer/
 Cargo.lock
+# pixi environments
+.pixi/*
+!.pixi/config.toml

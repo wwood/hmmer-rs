@@ -11,3 +11,6 @@ pub const p7_SEARCH_SEQS: i32 = 0;
 
 // #define p7_LOCAL     1		/* multihit local:  "fs" mode   */
 pub const p7_LOCAL: i32 = 1;
+
+// #define p7_DEFAULT   0
+pub const p7_DEFAULT: i32 = 0;

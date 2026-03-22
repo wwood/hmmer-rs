@@ -1,12 +1,14 @@
 mod hmm;
+mod hmmalign;
 mod hmmsearch;
 mod libhmmer_sys_extras;
 
 use log::*;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::fmt::Debug;
 
 pub use crate::hmm::*;
+pub use crate::hmmalign::*;
 pub use crate::hmmsearch::*;
 
 pub enum Alphabet {
@@ -76,6 +78,17 @@ impl EaselSequence {
         }
 
         debug!("Replaced sequence, now have {:#?}", self);
+        Ok(())
+    }
+
+    /// Set the name field on the underlying ESL_SQ.
+    /// The name must not contain null bytes.
+    pub fn set_name(&mut self, name: &str) -> Result<(), &'static str> {
+        let name_cstr = CString::new(name).map_err(|_| "Name must not contain null bytes")?;
+        let status = unsafe { libhmmer_sys::esl_sq_SetName(self.c_sq, name_cstr.as_ptr()) };
+        if status != libhmmer_sys::eslOK as i32 {
+            return Err("esl_sq_SetName failed");
+        }
         Ok(())
     }
 

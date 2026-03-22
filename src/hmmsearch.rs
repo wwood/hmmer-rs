@@ -71,6 +71,104 @@ impl HmmerPipeline {
         HmmerPipeline { info }
     }
 
+    /// Set the per-sequence E-value threshold (equivalent to hmmsearch -E).
+    /// Default: 10.0
+    pub fn with_seq_evalue(self, e: f64) -> Self {
+        unsafe {
+            (*self.info.pli).E = e;
+            (*self.info.pli).use_bit_cutoffs = 0; // FALSE
+            (*self.info.pli).inc_by_E = 1; // TRUE
+        }
+        self
+    }
+
+    /// Set the per-domain E-value threshold (equivalent to hmmsearch --domE).
+    /// Default: 10.0
+    pub fn with_dom_evalue(self, e: f64) -> Self {
+        unsafe {
+            (*self.info.pli).domE = e;
+            (*self.info.pli).use_bit_cutoffs = 0; // FALSE
+            (*self.info.pli).inc_by_E = 1; // TRUE
+        }
+        self
+    }
+
+    /// Set the per-sequence bitscore threshold (equivalent to hmmsearch -T).
+    pub fn with_seq_bitscore(self, t: f64) -> Self {
+        unsafe {
+            (*self.info.pli).T = t;
+            (*self.info.pli).use_bit_cutoffs = 0; // FALSE
+            (*self.info.pli).inc_by_E = 0; // FALSE — threshold by score
+        }
+        self
+    }
+
+    /// Set the per-domain bitscore threshold (equivalent to hmmsearch --domT).
+    pub fn with_dom_bitscore(self, t: f64) -> Self {
+        unsafe {
+            (*self.info.pli).domT = t;
+            (*self.info.pli).use_bit_cutoffs = 0; // FALSE
+            (*self.info.pli).inc_by_E = 0; // FALSE — threshold by score
+        }
+        self
+    }
+
+    /// Run the pipeline over a slice of sequences.
+    /// Returns a result object with accumulated hits. Can be called
+    /// multiple times (e.g. for different HMMs over the same sequences),
+    /// as a fresh top-hits list is created for each call.
+    pub fn search_sequences(&mut self, sequences: &[crate::EaselSequence]) -> HmmsearchResult {
+        // Create a fresh tophits list for this search
+        let th = unsafe { libhmmer_sys::p7_tophits_Create() };
+
+        // Reset pipeline state
+        unsafe {
+            libhmmer_sys::p7_pipeline_Reuse(self.info.pli);
+        }
+
+        for seq in sequences {
+            let info = &mut self.info;
+            unsafe {
+                if libhmmer_sys::p7_pli_NewSeq(info.pli, seq.c_sq) != libhmmer_sys::eslOK as i32 {
+                    panic!("p7_pli_NewSeq failed");
+                }
+                libhmmer_sys::p7_bg_SetLength(
+                    info.bg,
+                    (*seq.c_sq).n.try_into().expect("i64 -> i32 failed"),
+                );
+                libhmmer_sys::p7_oprofile_ReconfigLength(
+                    info.om,
+                    (*seq.c_sq).n.try_into().expect("i64 -> i32 failed"),
+                );
+
+                let sstatus = libhmmer_sys::p7_Pipeline(
+                    info.pli,
+                    info.om,
+                    info.bg,
+                    seq.c_sq,
+                    std::ptr::null_mut(),
+                    th,
+                );
+                if sstatus != libhmmer_sys::eslOK as i32 {
+                    panic!("p7_Pipeline sstatus indicated failure, was {sstatus}");
+                }
+
+                libhmmer_sys::p7_pipeline_Reuse(info.pli);
+            }
+        }
+
+        unsafe {
+            libhmmer_sys::p7_tophits_SortBySortkey(th);
+            libhmmer_sys::p7_tophits_Threshold(th, self.info.pli);
+        }
+
+        HmmsearchResult {
+            c_th: th,
+            c_pli: self.info.pli,
+            owns_pli: false,
+        }
+    }
+
     pub fn run_hmm_on_file(&mut self, hmm: &Hmm, fasta_path: &std::path::Path) -> HmmsearchResult {
         debug!("Starting run_hmm_on_file");
         #[allow(unused_mut)]
@@ -172,6 +270,7 @@ impl HmmerPipeline {
         HmmsearchResult {
             c_th: self.info.th,
             c_pli: self.info.pli,
+            owns_pli: false,
         }
     }
 
@@ -371,6 +470,7 @@ impl HmmerPipeline {
         HmmsearchResult {
             c_th: self.info.th,
             c_pli: self.info.pli,
+            owns_pli: false,
         }
     }
 }
@@ -392,13 +492,16 @@ pub struct HmmsearchWorkerInfo {
 pub struct HmmsearchResult {
     pub c_th: *mut libhmmer_sys::p7_tophits_s,
     pub c_pli: *mut libhmmer_sys::p7_pipeline_s,
+    owns_pli: bool,
 }
 
 impl Drop for HmmsearchResult {
     fn drop(&mut self) {
         unsafe {
             libhmmer_sys::p7_tophits_Destroy(self.c_th);
-            libhmmer_sys::p7_pipeline_Destroy(self.c_pli);
+            if self.owns_pli {
+                libhmmer_sys::p7_pipeline_Destroy(self.c_pli);
+            }
         }
     }
 }
@@ -472,6 +575,16 @@ impl HmmsearchResultTopHit {
     // println!("Score of first hit overall {}", first_hit.score);
     pub fn score(&self) -> f32 {
         unsafe { (*self.c_hit).score }
+    }
+
+    /// Per-sequence bitscore (alias for score()).
+    pub fn bitscore(&self) -> f32 {
+        self.score()
+    }
+
+    /// Per-sequence E-value.
+    pub fn evalue(&self) -> f64 {
+        unsafe { (*self.c_hit).lnP.exp() * (*self.c_pli).Z }
     }
 }
 

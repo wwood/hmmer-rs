@@ -1,0 +1,26 @@
+[workspace]
+authors = ["Ben Woodcroft <benjwoodcroft@gmail.com>"]
+channels = ["conda-forge"]
+name = "hmmer-rs"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+# Linux
+sysroot_linux-64 = ">=2.17"
+# macOS (if cross-compiling or in CI)
+# clang_osx-64 = "*"
+c-compiler = "*"
+cxx-compiler = "*"
+# Essential GCC and C++ runtime libraries for compilation
+gcc_impl_linux-64 = "*"
+gxx_impl_linux-64 = "*"
+libgcc-ng = "*"
+libstdcxx-ng = "*"
+# Clang and LLVM for bindgen
+clang = "*"
+libclang = ">=22.1.0,<23"
+compilers = ">=1.11.0,<2"
+gawk = ">=5.3.1,<6"
